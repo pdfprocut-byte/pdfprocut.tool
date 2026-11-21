@@ -3,7 +3,7 @@ services:
     name: pdfprocut
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build -w client
+    buildCommand: npm ci --include=dev && npm run build -w client
     startCommand: npm start -w server
     healthCheckPath: /api/health
     domains:
