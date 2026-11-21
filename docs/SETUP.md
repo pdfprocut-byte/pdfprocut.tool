@@ -1,5 +1,14 @@
 # Setup
 
+## Render deployment
+
+The root `render.yaml` defines two Render services:
+
+- `pdfprocut` is the Node API at `https://api.pdfprocut.com`.
+- `pdfprocut-frontend` is the React static site at `https://pdfprocut.com`; it builds with `VITE_API_URL=https://api.pdfprocut.com/api` and rewrites client-side routes to `index.html`.
+
+Set `MONGODB_URI` on the API service. Render generates `JWT_SECRET`. To enable Adobe PDF Services, add `PDF_SERVICES_CLIENT_ID` and `PDF_SERVICES_CLIENT_SECRET` to the API service's Environment settings; never put these credentials in the frontend or Git. Configure the DNS records Render shows for both custom domains, then keep `CLIENT_URL` set to the exact frontend origin.
+
 Copy `server/.env.example` to `server/.env`, set a long random `JWT_SECRET`, and configure `MONGODB_URI`.
 
 Email verification can use Resend or SMTP. For Resend, set `RESEND_API_KEY` and `RESEND_FROM` in `server/.env`. Create a sending-only API key and keep it in the server environment only; never put it in a `VITE_` variable or client code. `RESEND_FROM` must use an address from a domain verified in Resend. Resend's API sends the verification email from the backend. Alternatively, set `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM` for an SMTP provider. Registration fails closed if the selected provider is not configured or cannot send the code.
