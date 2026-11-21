@@ -1,0 +1,70 @@
+.signature-placement-section{margin-top:1.35rem;padding:1rem;border:1px solid #e4e7ee;border-radius:14px;background:#f8f9fc}
+.signature-placement-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.8rem}
+.signature-placement-heading h3{margin:0;color:#202a3b;font-size:1rem;font-weight:700}
+.signature-placement-heading p{margin:.2rem 0 0;color:#697487;font-size:.8rem}
+.signature-placement-heading>span{flex:0 0 auto;padding:.28rem .55rem;border-radius:999px;background:#fff;color:#667085;font-size:.7rem;font-weight:650}
+.signature-placement-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,270px);gap:1rem;align-items:start}
+.signature-placement-main{min-width:0}
+.signature-placement-tools{display:grid;gap:.85rem;align-content:start;max-height:70vh;overflow:auto;padding:1rem;border:1px solid #e1e5ed;border-radius:11px;background:#fff}
+.signature-placement-tools h4{margin:0;color:#273247;font-size:.9rem;font-weight:700}
+.signature-placement-tools label{display:grid;gap:.35rem;margin:0;color:#344054;font-size:.78rem;font-weight:650}
+.signature-tools-label-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.signature-placement-tools label output{margin-left:auto;color:#a92335;font-weight:700}
+.signature-placement-tools .form-control,.signature-placement-tools .form-select{max-width:none;margin-top:0}
+.signature-placement-tools .form-range{width:100%;margin:0}
+.signature-placement-tools small{color:#697487;font-size:.72rem;line-height:1.45}
+.signature-placement-workspace{display:flex;justify-content:center;max-height:70vh;overflow:auto;padding:.6rem;border:1px solid #e1e5ed;border-radius:10px;background:linear-gradient(45deg,#eef1f6 25%,transparent 25%,transparent 75%,#eef1f6 75%),linear-gradient(45deg,#eef1f6 25%,#fff 25%,#fff 75%,#eef1f6 75%);background-position:0 0,8px 8px;background-size:16px 16px}
+.signature-placement-page{position:relative;width:min(100%,760px);flex:0 0 auto;overflow:hidden;background:#fff;box-shadow:0 5px 22px #17203322;cursor:crosshair;touch-action:pan-y}
+.signature-placement-pdf-page{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;user-select:none}
+.signature-placement-stamp{position:absolute;z-index:1;min-width:18px;min-height:10px;border:2px dashed #d9273d;border-radius:3px;background:#ffffff25;box-shadow:0 2px 8px #10182838;cursor:move;touch-action:none;user-select:none}
+.signature-placement-stamp:focus-visible{outline:3px solid #d9273d88;outline-offset:3px}
+.signature-placement-stamp:after{position:absolute;right:-5px;bottom:-5px;width:9px;height:9px;border:1px solid #fff;border-radius:50%;background:#d9273d;content:""}
+.signature-placement-stamp img{position:absolute;top:50%;left:50%;display:block;max-width:none;object-fit:fill;opacity:.82;pointer-events:none;user-select:none}
+.signature-rotate-handle{position:absolute;top:5px;left:50%;z-index:2;width:28px;height:28px;display:grid;place-items:center;padding:0;border:2px solid #fff;border-radius:50%;background:#d9273d;color:#fff;box-shadow:0 2px 7px #10182855;cursor:grab;touch-action:none;transform:translateX(-50%)}
+.signature-rotate-handle:hover{background:#b51d30}.signature-rotate-handle:active{cursor:grabbing}.signature-rotate-handle:focus-visible{outline:3px solid #d9273d66;outline-offset:2px}
+.signature-text-placement{position:absolute;z-index:3;min-width:12px;padding:2px 3px;border:1px solid transparent;border-radius:3px;line-height:1.15;white-space:pre-wrap;overflow-wrap:anywhere;cursor:grab;touch-action:none;user-select:none}
+.signature-text-placement.active{border:1px dashed #2474d2;background:#ffffff75;box-shadow:0 1px 6px #17203330}.signature-text-placement:active{cursor:grabbing}
+.signature-layer-buttons{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
+.signature-layer-buttons button{min-height:36px;padding:.4rem .5rem;border:1px solid #d8dde6;border-radius:7px;background:#fff;color:#596579;font-size:.74rem;font-weight:650}
+.signature-layer-buttons button.active{border-color:#d9273d;background:#fff3f3;color:#a92335}.signature-layer-buttons button:disabled{opacity:.45;cursor:not-allowed}
+.signature-text-list-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.2rem}
+.signature-text-list-heading h5{margin:0;color:#273247;font-size:.82rem;font-weight:700}
+.signature-text-list-heading h5 small{color:#8b93a1;font-size:.66rem;font-weight:500}
+.signature-add-text{min-height:32px;padding:.3rem .55rem;border:1px solid #e5c1c6;border-radius:7px;background:#fff7f7;color:#a92335;font-size:.72rem;font-weight:700}
+.signature-add-text:hover:not(:disabled){background:#ffeff0}.signature-add-text:disabled{opacity:.45;cursor:not-allowed}
+.signature-text-layers{display:grid;gap:.6rem}
+.signature-source-switch{display:flex;gap:.45rem;margin-bottom:.8rem}
+.signature-source-switch button{min-height:38px;padding:.45rem .8rem;border:1px solid #d8dde6;border-radius:8px;background:#fff;color:#596579;font-size:.82rem;font-weight:650}
+.signature-source-switch button.active{border-color:#d9273d;background:#fff3f3;color:#a92335}
+.signature-draw-pad{display:grid;gap:.65rem;margin-top:.7rem;padding:.8rem;border:1px solid #e1e5ed;border-radius:10px;background:#fff}
+.signature-draw-tools{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.signature-draw-color{display:flex;align-items:center;gap:.45rem;margin-right:auto;color:#344054;font-size:.8rem;font-weight:650}
+.signature-draw-color input{width:40px;height:34px;padding:.15rem;border:1px solid #d0d5dd;border-radius:6px;background:#fff;cursor:pointer}
+.signature-draw-tools button{min-height:34px;padding:.35rem .65rem;border:1px solid #d8dde6;border-radius:7px;background:#fff;color:#475467;font-size:.76rem;font-weight:650}
+.signature-draw-tools .signature-draw-use{border-color:#d9273d;background:#d9273d;color:#fff}
+.signature-draw-tools button:disabled{opacity:.45;cursor:not-allowed}
+.signature-draw-canvas{display:block;width:100%;height:auto;aspect-ratio:10/3;border:1px dashed #b8c1d1;border-radius:8px;background:#fff;touch-action:none;cursor:crosshair}
+.signature-draw-pad>small{color:#697487;font-size:.74rem;line-height:1.45}
+.signature-draw-pad>small.signature-draw-message{color:#b42335}
+.signature-text-layer{display:grid;gap:.65rem;padding:.65rem;border:1px solid #e4e7ed;border-radius:9px;background:#fbfcff}
+.signature-text-layer.selected{border-color:#d98f98;background:#fffafa;box-shadow:0 0 0 2px #d9273d0b}
+.signature-text-layer-heading{display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.signature-text-select{min-height:28px;padding:.25rem .45rem;border:0;border-radius:6px;background:#eff2f7;color:#455267;font-size:.7rem;font-weight:700}
+.signature-text-layer.selected .signature-text-select{background:#fff0f1;color:#a92335}
+.signature-text-remove{width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:50%;background:#fff0f1;color:#c52238;font-size:1.1rem;line-height:1}
+.signature-text-remove:hover{background:#df2338;color:#fff}
+.signature-color-field{display:grid;grid-template-columns:1fr 45px;align-items:center;gap:.5rem}
+.signature-placement-tools input[type=color]{width:45px;height:37px;margin:0;padding:.2rem;border:1px solid #d0d5dd;border-radius:7px;background:#fff;cursor:pointer}
+.signature-placement-loading{min-height:160px;display:flex;align-items:center;justify-content:center;gap:.55rem;border:1px dashed #d5dae4;border-radius:10px;background:#fff;color:#667085;font-size:.85rem}
+.signature-placement-loading span{width:20px;height:20px;border:3px solid #e1e5ed;border-top-color:#d9273d;border-radius:50%;animation:signature-place-spin .7s linear infinite}
+.signature-placement-error{margin:.8rem 0;padding:.7rem .8rem;border:1px solid #f0c3c8;border-radius:8px;background:#fff7f7;color:#a21f31;font-size:.82rem}
+.tool-page.tool-page-image-placement{width:min(100% - 2rem,1160px);max-width:1160px}
+.tool-page-image-placement .signature-placement-section{margin-top:1.5rem;padding:1.15rem}
+.tool-page-image-placement .signature-placement-layout{grid-template-columns:minmax(0,1fr) minmax(300px,320px);gap:1rem}
+.tool-page-image-placement .signature-placement-tools{max-height:min(78vh,880px);padding:1rem}
+.tool-page-image-placement .signature-placement-workspace{max-height:min(80vh,960px);padding:.8rem}
+.tool-page-image-placement .signature-placement-page{width:min(100%,640px)}
+@keyframes signature-place-spin{to{transform:rotate(360deg)}}
+@media(max-width:900px){.signature-placement-layout,.tool-page-image-placement .signature-placement-layout{grid-template-columns:minmax(0,1fr)}.signature-placement-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.signature-placement-tools h4,.signature-placement-tools small{grid-column:1/-1}}
+@media(max-width:575px){.signature-placement-section{padding:.7rem}.signature-placement-heading{flex-direction:column;gap:.45rem}.signature-placement-workspace{max-height:62vh;padding:.35rem}.signature-placement-tools{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){.signature-placement-loading span{animation-duration:1.4s}}

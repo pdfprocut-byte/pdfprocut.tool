@@ -1,0 +1,44 @@
+.content-page{min-height:55vh;padding:4.5rem 0 5.5rem;background:linear-gradient(180deg,#fbfcff 0,#fff 420px)}
+.content-reading-width{max-width:940px}
+.content-page-header{max-width:780px;margin:0 auto 3rem}
+.content-page-header h1{margin:0 0 1rem;color:#202a3b;font-size:clamp(2.2rem,5vw,3.6rem);font-weight:780;letter-spacing:-.065em;line-height:1.04}
+.content-page-header>p{margin:.55rem 0 0;color:#667085;font-size:1rem;line-height:1.75}
+.content-page section{margin:0 auto 2.15rem}
+.content-page section h2{margin:0 0 .8rem;color:#253149;font-size:1.35rem;font-weight:740;letter-spacing:-.035em}
+.content-page section p,.content-page section li{color:#5f6b7d;font-size:.96rem;line-height:1.8}
+.content-page section p:last-child{margin-bottom:0}
+.content-page a{color:#b42338;font-weight:650}
+.content-page-note{margin:2.5rem auto 0;padding:1.1rem 1.2rem;border-left:3px solid #d9273d;border-radius:0 10px 10px 0;background:#fff5f5;color:#667085;font-size:.83rem;line-height:1.7}
+.content-page-related{margin:2.5rem auto 0;color:#667085;font-size:.9rem;line-height:1.7}
+.guide-directory-section{max-width:1080px;margin:3rem auto!important}
+.guide-directory-section>h2{margin:0 0 1rem!important;color:#253149;font-size:1.45rem!important;font-weight:740}
+.guide-directory-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+.guide-directory-card{display:flex;flex-direction:column;min-height:180px;padding:1.2rem;border:1px solid #e7eaf0;border-radius:16px;background:#fff;box-shadow:0 8px 24px #1b29420a}
+.guide-directory-card h3{margin:0 0 .6rem;font-size:1rem;font-weight:720}
+.guide-directory-card p{margin:0 0 1rem;color:#667085;font-size:.84rem;line-height:1.6}
+.guide-card-link{display:inline-flex;gap:.45rem;align-items:center;margin-top:auto;text-decoration:none;font-size:.8rem}
+.content-faq-section{max-width:860px!important;margin:4rem auto 0!important;padding:2rem;border:1px solid #e8eaf0;border-radius:20px;background:#fff}
+.content-faq-section>h2{font-size:1.8rem!important;margin-bottom:1.2rem!important}
+.content-faq-section details,.tool-guide-faq details{padding:.9rem 0;border-top:1px solid #eceef3}
+.content-faq-section summary,.tool-guide-faq summary{color:#29354a;font-size:.92rem;font-weight:680;cursor:pointer}
+.content-faq-section details p,.tool-guide-faq details p{margin:.65rem 0 0;color:#667085;font-size:.87rem;line-height:1.7}
+.tool-guide{max-width:1080px;margin:0 auto 4.5rem;padding:2.2rem;border:1px solid #e7eaf0;border-radius:22px;background:linear-gradient(135deg,#fbfcff,#fff);box-shadow:0 16px 38px #1720330c;scroll-margin-top:100px}
+.tool-guide-heading{max-width:780px;margin-bottom:1.7rem}
+.tool-guide-heading h2{margin:0 0 .55rem;color:#253149;font-size:clamp(1.6rem,3.2vw,2.1rem);font-weight:760;letter-spacing:-.05em}
+.tool-guide-heading>p{margin:0;color:#667085;font-size:.97rem;line-height:1.75}
+.tool-guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.tool-guide-grid section{margin:0;padding:1.2rem;border:1px solid #eceef3;border-radius:15px;background:#fff}
+.tool-guide-grid h3,.tool-guide-faq h3{margin:0 0 .55rem;color:#344054;font-size:.98rem;font-weight:720}
+.tool-guide-grid p,.tool-guide-grid li{color:#667085;font-size:.88rem;line-height:1.7}
+.tool-guide-grid p{margin:0}
+.tool-guide-grid ol{margin:0;padding-left:1.2rem}
+.tool-guide-grid li+li{margin-top:.35rem}
+.tool-guide-faq{margin:1.5rem 0 0!important;padding:1.3rem;border:1px solid #eceef3;border-radius:15px;background:#fff}
+.tool-guide-faq h3{font-size:1.05rem}
+.tool-guide-faq details:last-child{padding-bottom:0}
+.tool-guide-directory-link{display:inline-block;margin-top:1.2rem;text-decoration:none;font-size:.84rem}
+.contact-email-note{display:block;color:#667085;font-size:.76rem;line-height:1.6}
+.contact-not-configured{padding:1.1rem;border:1px solid #f1d3a8;border-radius:12px;background:#fff9ed;color:#6d552d;font-size:.88rem;line-height:1.6}
+.contact-not-configured p{margin:.45rem 0 0;color:#75664f;font-size:.82rem}
+@media(max-width:850px){.guide-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.content-page{padding:3.2rem 0 4rem}.content-page-header{margin-bottom:2.2rem}.guide-directory-grid,.tool-guide-grid{grid-template-columns:1fr}.guide-directory-card{min-height:0}.content-faq-section,.tool-guide{padding:1.3rem}.tool-guide{margin:0 1rem 3.2rem}}

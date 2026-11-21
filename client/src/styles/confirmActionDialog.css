@@ -1,0 +1,20 @@
+.confirm-action-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:1rem;background:rgba(22,20,39,.5);backdrop-filter:blur(7px);perspective:1200px;animation:confirm-action-fade-in .2s ease-out both}
+.confirm-action-dialog{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:auto minmax(0,1fr);gap:.1rem 1rem;width:min(100%,440px);padding:1.4rem;border:1px solid rgba(118,83,210,.25);border-radius:20px;background:linear-gradient(145deg,#fff 0%,#fff 72%,#faf7ff 100%);box-shadow:0 38px 100px rgba(26,18,54,.34),0 12px 28px rgba(75,49,135,.16),inset 0 1px #fff;transform-style:preserve-3d;backface-visibility:hidden;animation:confirm-action-pop-in .62s cubic-bezier(.16,1,.3,1) both}
+.confirm-action-dialog::before{position:absolute;z-index:-1;inset:0 0 auto;height:5px;background:linear-gradient(90deg,#9a6af5,#6735d3 52%,#b28cff);content:""}
+.confirm-action-dialog::after{position:absolute;z-index:-1;top:-70%;left:-45%;width:45%;height:240%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);content:"";pointer-events:none;transform:rotate(24deg);animation:confirm-action-shine .9s .2s ease-out both}
+.confirm-action-icon{display:grid;grid-row:span 2;place-items:center;width:2.65rem;height:2.65rem;border-radius:14px;background:linear-gradient(145deg,#f3eaff,#e8ddff);color:#6634cf;font-size:1.35rem;font-weight:850}
+.confirm-action-copy h2{margin:.15rem 0 .45rem;color:#242033;font-size:1.08rem;font-weight:800;letter-spacing:-.02em}
+.confirm-action-copy p{margin:0;color:#666376;font-size:.92rem;line-height:1.55;overflow-wrap:anywhere}
+.confirm-action-buttons{grid-column:2;display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.35rem}
+.confirm-action-buttons button{min-width:92px;padding:.62rem 1rem;border:1px solid transparent;border-radius:11px;font:inherit;font-size:.88rem;font-weight:750;transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
+.confirm-action-buttons button:hover:not(:disabled){transform:translateY(-2px)}
+.confirm-action-buttons button:focus-visible{outline:3px solid rgba(111,63,215,.28);outline-offset:2px}
+.confirm-action-buttons button:disabled{cursor:wait;opacity:.7}
+.confirm-action-cancel{border-color:#e2deeb!important;background:#fff;color:#595469}
+.confirm-action-cancel:hover:not(:disabled){background:#f8f6fc}
+.confirm-action-ok{background:linear-gradient(135deg,#7544df,#5930bf);color:#fff;box-shadow:0 7px 16px rgba(96,53,197,.24)}
+.confirm-action-ok:hover:not(:disabled){box-shadow:0 10px 22px rgba(96,53,197,.3)}
+@keyframes confirm-action-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes confirm-action-pop-in{0%{opacity:0;transform:translate3d(0,34px,-100px) rotateX(-18deg) rotateY(9deg) scale(.82)}55%{opacity:1;transform:translate3d(0,-5px,18px) rotateX(3deg) rotateY(-2deg) scale(1.025)}78%{transform:translate3d(0,2px,0) rotateX(-1deg) rotateY(.5deg) scale(.995)}100%{opacity:1;transform:translate3d(0,0,0) rotateX(0) rotateY(0) scale(1)}}
+@keyframes confirm-action-shine{0%{left:-55%;opacity:0}25%{opacity:.85}100%{left:130%;opacity:0}}
+@media(prefers-reduced-motion:reduce){.confirm-action-backdrop,.confirm-action-dialog,.confirm-action-dialog::after{animation:none}.confirm-action-buttons button{transition:none}}

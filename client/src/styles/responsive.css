@@ -1,0 +1,434 @@
+/* Shared layout safeguards and small-screen touch targets. Page styles keep
+   their own breakpoints; these rules cover the gaps between those layouts. */
+:root {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body,
+#root,
+.app {
+  width: 100%;
+}
+
+body {
+  overflow-x: clip;
+}
+
+#root,
+.app,
+main,
+section,
+article,
+aside {
+  min-width: 0;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+@media (max-width: 991.98px) {
+  .pdfpro-tools-dropdown {
+    max-height: min(55vh, 32rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pdfpro-tools-category,
+  .pdfpro-tool-option {
+    min-width: 0;
+  }
+
+  .pdfpro-tools-dropdown-inner {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .container,
+  .container-fluid {
+    padding-inline: 1rem;
+  }
+
+  main.container.py-5 {
+    padding-block: 2rem !important;
+  }
+
+  .pdfpro-navbar .navbar-toggler {
+    min-width: 44px;
+    min-height: 44px;
+    padding: .45rem;
+  }
+
+  .pdfpro-nav-content .nav-link,
+  .pdfpro-tools-dropdown-toggle,
+  .pdfpro-tools-dropdown .pdfpro-tool-option {
+    min-height: 44px;
+  }
+
+  .pdfpro-tools-dropdown .pdfpro-tool-option {
+    overflow-wrap: anywhere;
+  }
+
+  .pdfpro-footer-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pdfpro-footer-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tool-page,
+  .merge-tool-page,
+  .text-to-pdf-page,
+  .scan-page,
+  .page-numbers-page,
+  .watermark-page {
+    min-width: 0;
+  }
+
+  .tool-page h2,
+  .tool-page h3,
+  .tool-page .lead,
+  .pdfpro-info-page,
+  .file-list {
+    overflow-wrap: anywhere;
+  }
+
+  .file-list > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .35rem .75rem;
+    min-width: 0;
+  }
+
+  .file-list span {
+    float: none;
+    flex: 0 0 auto;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .uploader {
+    padding: 2.25rem 1rem;
+  }
+
+  .scan-workspace,
+  .merge-workspace,
+  .page-numbers-workspace,
+  .watermark-workspace,
+  .text-to-pdf-workspace {
+    min-width: 0;
+  }
+
+  .scan-pages-panel,
+  .scan-options,
+  .merge-page-board,
+  .page-numbers-preview-panel,
+  .watermark-preview-panel,
+  .text-document-panel,
+  .text-settings-panel {
+    min-width: 0;
+  }
+
+  .word-titlebar,
+  .word-ribbon,
+  .word-ribbon-tabs {
+    min-width: 0;
+  }
+
+  .word-ribbon-tabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .word-ribbon-tabs button {
+    flex: 0 0 auto;
+    min-height: 44px;
+  }
+
+  .word-document-area,
+  .word-page-stage {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .word-statusbar {
+    flex-wrap: wrap;
+    min-height: 34px;
+    padding-block: .35rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  :root {
+    font-size: 16px;
+  }
+
+  .container,
+  .container-fluid {
+    padding-inline: .875rem;
+  }
+
+  .pdfpro-navbar-container {
+    column-gap: .5rem;
+  }
+
+  .pdfpro-navbar .navbar-brand {
+    font-size: 1.25rem !important;
+  }
+
+  .pdfpro-navbar .navbar-toggler {
+    flex: 0 0 44px;
+  }
+
+  .pdfpro-tools-dropdown {
+    max-height: 52vh;
+    padding: .65rem .45rem;
+  }
+
+  .pdfpro-tools-dropdown-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: .65rem;
+  }
+
+  .pdfpro-tools-category {
+    padding: .6rem;
+  }
+
+  .pdfpro-tools-category h2 {
+    min-height: 0;
+  }
+
+  .pdfpro-all-tools-link {
+    grid-column: 1;
+    justify-self: stretch;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .pdfpro-footer {
+    padding-top: 2.5rem;
+  }
+
+  .pdfpro-footer-links {
+    gap: 1.25rem;
+  }
+
+  .tool-page .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 46px;
+    margin-left: 0 !important;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .page-preview > .d-flex {
+    align-items: flex-start !important;
+    flex-direction: column;
+    gap: .3rem;
+  }
+
+  .uploader {
+    margin-top: 1.25rem;
+    padding: 1.75rem .75rem;
+    border-radius: 15px;
+  }
+
+  .uploader h2 {
+    font-size: 1.1rem;
+  }
+
+  .merge-page-board,
+  .scan-pages-panel,
+  .scan-options,
+  .page-numbers-preview-panel,
+  .page-number-options,
+  .watermark-preview-panel,
+  .watermark-options,
+  .text-document-panel,
+  .text-settings-panel {
+    padding: .8rem;
+  }
+
+  .merge-page-grid,
+  .scan-pages-grid,
+  .page-grid {
+    gap: .55rem;
+  }
+
+  .merge-page-card > img {
+    height: 170px;
+  }
+
+  .page-thumb img {
+    height: 140px;
+  }
+
+  .scan-image-preview {
+    min-height: 170px;
+  }
+
+  .scan-image-controls {
+    flex-wrap: wrap;
+  }
+
+  .scan-image-controls button,
+  .merge-order-buttons button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .page-number-options,
+  .watermark-options,
+  .scan-options,
+  .text-settings-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .page-number-options h2,
+  .watermark-options h2,
+  .scan-options h2,
+  .scan-options .scan-option-hint,
+  .text-settings-panel h2,
+  .text-settings-panel .text-settings-note,
+  .text-settings-panel > .btn {
+    grid-column: 1;
+  }
+
+  .text-to-pdf-upload {
+    min-width: 0;
+  }
+
+  .text-toolbar {
+    gap: .35rem;
+  }
+
+  .text-toolbar-button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .text-toolbar-select {
+    min-width: 0;
+  }
+
+  .auth-page {
+    padding: 1.5rem .75rem;
+  }
+
+  .auth-card {
+    padding: 1.2rem;
+  }
+
+  .auth-form input,
+  .contact-form input,
+  .contact-form select,
+  .contact-form textarea,
+  .tool-page .form-control,
+  .tool-page .form-select {
+    font-size: 16px;
+  }
+
+  .auth-otp-input {
+    letter-spacing: .25em !important;
+  }
+
+  .contact-form-panel {
+    padding: 1.1rem;
+  }
+
+  .contact-submit {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .home-hero-actions > a {
+    min-height: 44px;
+  }
+
+  .word-titlebar {
+    gap: .35rem;
+    padding-inline: .5rem;
+  }
+
+  .word-open-button {
+    padding-inline: .35rem;
+  }
+
+  .word-document-name {
+    min-width: 0;
+  }
+
+  .word-title-actions {
+    justify-content: space-between;
+  }
+
+  .word-export-button,
+  .word-download-button {
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .word-layout-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .55rem;
+  }
+
+  .word-layout-options > label {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 359.98px) {
+  .container,
+  .container-fluid {
+    padding-inline: .75rem;
+  }
+
+  .pdfpro-navbar .navbar-brand {
+    font-size: 1.12rem !important;
+  }
+
+  .home-hero-actions {
+    flex-direction: column;
+  }
+
+  .home-hero-actions > a {
+    width: 100%;
+  }
+
+  .about-art-back {
+    width: min(78vw, 270px);
+    height: min(82vw, 295px);
+  }
+
+  .about-art-float {
+    right: 0;
+  }
+
+  .contact-form-panel {
+    padding: .9rem;
+  }
+
+  .word-layout-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .word-statusbar {
+    gap: .4rem;
+    font-size: .58rem;
+  }
+}

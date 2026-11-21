@@ -1,0 +1,20 @@
+.download-auth-backdrop{position:fixed;inset:0;z-index:4000;display:grid;place-items:center;padding:1rem;background:#121a2bd1;backdrop-filter:blur(5px)}
+.download-auth-dialog{position:relative;width:min(100%,430px);max-height:min(90vh,700px);overflow-y:auto;padding:2rem;border:1px solid #e5e8ef;border-radius:20px;background:#fff;box-shadow:0 24px 80px #080d1870;color:#172033}
+.download-auth-close{position:absolute;top:.65rem;right:.7rem;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:50%;background:#f3f4f7;color:#697386;font-size:1.5rem;line-height:1}
+.download-auth-close:hover{background:#e9ebf1;color:#172033}
+.download-auth-kicker{display:block;margin-bottom:.55rem;color:#a1535b;font-size:.68rem;font-weight:750;letter-spacing:.14em}
+.download-auth-dialog h2{margin:0;color:#202a3b;font-size:clamp(1.45rem,4vw,1.8rem);font-weight:740;letter-spacing:-.04em;line-height:1.2}
+.download-auth-dialog>p{margin:.6rem 0 1.25rem;color:#6d7787;font-size:.9rem;line-height:1.55}
+.download-auth-error{padding:.7rem .8rem;border:1px solid #f1c4c8;border-radius:8px;background:#fff4f4;color:#a21f31!important;font-size:.8rem!important}
+.download-auth-form{display:grid;gap:.8rem}
+.download-auth-form label{display:grid;gap:.4rem;color:#354054;font-size:.8rem;font-weight:650}
+.download-auth-form input{width:100%;min-height:46px;padding:.65rem .75rem;border:1px solid #dfe3e9;border-radius:8px;background:#fff;color:#172033;font-size:1rem;font-weight:400}
+.download-auth-form input:focus{border-color:#d88b93;outline:0;box-shadow:0 0 0 3px #d9273d14}
+.download-auth-submit{width:100%;min-height:46px;margin-top:.2rem}
+.download-auth-divider{display:flex;align-items:center;gap:.7rem;margin:.9rem 0;color:#9aa1ad;font-size:.75rem}
+.download-auth-divider:before,.download-auth-divider:after{height:1px;flex:1;background:#e7e9ed;content:""}
+.download-auth-dialog .auth-google-control{min-height:42px}
+.download-auth-register{margin:1rem 0 0!important;text-align:center}
+.download-auth-register a{color:#b52336;font-weight:700;text-decoration:none}
+.download-auth-register a:hover{text-decoration:underline}
+@media(max-width:480px){.download-auth-dialog{padding:1.4rem;border-radius:16px}.download-auth-backdrop{padding:.75rem}}

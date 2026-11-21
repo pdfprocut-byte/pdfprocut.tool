@@ -1,0 +1,92 @@
+.account-dashboard {
+  width: min(100% - 2rem, 1260px);
+  max-width: 1260px;
+  padding-top: 2rem !important;
+  color: #1c2940;
+}
+
+.account-profile.account-dashboard { animation: none; isolation: auto; }
+.account-dashboard::before { display: none; }
+.account-dashboard-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.35rem; }
+.account-dashboard-heading > div > span { color: #5c42c8; font-size: .68rem; font-weight: 800; letter-spacing: .13em; }
+.account-dashboard-heading h1 { margin: .25rem 0 .25rem; color: #17243a; font-size: clamp(1.8rem, 3vw, 2.35rem); font-weight: 800; letter-spacing: -.045em; }
+.account-dashboard-heading p { margin: 0; color: #6d7a90; font-size: .9rem; }
+.account-dashboard-tools-link { display: inline-flex; align-items: center; justify-content: center; min-height: 2.65rem; padding: .65rem 1rem; border: 1px solid #ded8f8; border-radius: .7rem; background: #f7f5ff; color: #5138b6; font-size: .78rem; font-weight: 750; text-decoration: none; transition: background .18s ease, transform .18s ease; }
+.account-dashboard-tools-link:hover { transform: translateY(-1px); background: #eeebff; color: #432b9f; }
+.account-dashboard-layout { display: grid; grid-template-columns: minmax(245px, 290px) minmax(0, 1fr); align-items: start; gap: 1.2rem; }
+.account-dashboard-profile-card { position: sticky; top: 6rem; display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 1.4rem; border: 1px solid #293a56; border-radius: 1rem; background: #17263f; color: #fff; box-shadow: 0 12px 28px #17263f18; }
+.account-dashboard-profile-top { display: flex; flex-direction: column; align-items: center; gap: .6rem; margin-bottom: .75rem; }
+.account-dashboard-profile-top > span { color: #bac7dd; font-size: .65rem; font-weight: 800; letter-spacing: .14em; }
+.account-dashboard-profile-card .account-profile-avatar { width: 5.2rem; height: 5.2rem; flex-basis: 5.2rem; border: 3px solid #fff; box-shadow: 0 0 0 4px #7185c433; animation: none; }
+.account-dashboard-profile-card .account-profile-identity { width: 100%; flex: none; text-align: center; }
+.account-dashboard-profile-card .account-profile-identity > span { display: none; }
+.account-dashboard-profile-card .account-profile-identity h2 { margin: 0 0 .35rem; color: #fff; font-size: 1.35rem; font-weight: 800; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.account-dashboard-profile-card .account-profile-identity p { margin: 0; color: #b8c4d8; font-size: .78rem; }
+.account-dashboard-profile-card .account-profile-badges { justify-content: center; margin: .85rem 0 0; }
+.account-dashboard-profile-card .account-profile-badges span { max-width: 100%; overflow-wrap: anywhere; border-color: #ffffff26; background: #ffffff12; color: #e2e9f4; }
+.account-dashboard-profile-card .account-profile-edit-button { width: 100%; min-height: 2.6rem; margin-top: 1.1rem; border: 1px solid #7665d8; border-radius: .65rem; background: #604bd0; box-shadow: none; color: #fff; }
+.account-dashboard-profile-card .account-profile-edit-button:hover { border-color: #8d7ce8; background: #6b58db; box-shadow: none; }
+.account-dashboard-profile-note { display: grid; gap: .3rem; width: 100%; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid #ffffff1c; }
+.account-dashboard-profile-note strong { color: #e7ecf5; font-size: .73rem; }
+.account-dashboard-profile-note span { color: #aebbd0; font-size: .69rem; line-height: 1.5; }
+.account-dashboard-content { display: grid; gap: 1rem; min-width: 0; }
+.account-dashboard-content > .account-profile-error,
+.account-dashboard-content > .account-profile-success { margin: 0; }
+.account-dashboard .account-profile-section { margin: 0; padding: 1.25rem; overflow: visible; border: 1px solid #e2e7f0; border-radius: 1rem; background: #fff; box-shadow: 0 5px 20px #18284108; animation: none; }
+.account-dashboard .account-profile-edit-card { border-color: #dcd7f6; background: #fff; }
+.account-dashboard .account-profile-heading { align-items: center; margin-bottom: 1rem; }
+.account-dashboard .account-profile-heading h2 { margin-top: .28rem; color: #1b2940; font-size: 1.2rem; }
+.account-dashboard .account-profile-heading p { max-width: 42rem; color: #728096; font-size: .75rem; }
+.account-dashboard .account-profile-kicker { padding: 0; border: 0; background: none; box-shadow: none; color: #6250bb; font-size: .62rem; }
+.account-dashboard-document-count { flex: 0 0 auto; padding: .38rem .65rem; border: 1px solid #e5e8f0; border-radius: 999px; background: #f7f8fb; color: #5c687d; font-size: .68rem; font-weight: 750; }
+.account-dashboard .account-profile-form { gap: .8rem; }
+.account-dashboard .account-saved-document-list { gap: .6rem; }
+.account-dashboard .account-saved-document { grid-template-columns: 3.5rem minmax(0, 1fr); gap: .55rem .85rem; padding: .75rem; border-color: #e8ebf1; border-radius: .8rem; background: #fff; box-shadow: none; animation: none; }
+.account-dashboard .account-saved-document:hover { transform: none; border-color: #cfd5e2; box-shadow: 0 4px 14px #1828410c; }
+.account-dashboard .account-saved-document .profile-document-thumbnail { width: 3.25rem; height: 4.25rem; border: 1px solid #e4e7ee; border-radius: .55rem; background: #f6f7fa; box-shadow: none; }
+.account-dashboard .account-saved-document-info { gap: .25rem; }
+.account-dashboard .account-saved-document-info strong { color: #202d43; font-size: .78rem; }
+.account-dashboard .account-saved-document-info span { color: #7c8798; font-size: .67rem; }
+.account-dashboard .account-saved-document-actions { gap: .35rem; }
+.account-dashboard .account-saved-document-actions button { min-height: 1.95rem; padding: .35rem .55rem; border: 1px solid #e1e5ec; border-radius: .5rem; background: #fff; color: #4d5b71; box-shadow: none; font-size: .65rem; }
+.account-dashboard .account-saved-document-actions button:nth-child(2) { border-color: #e3def8; background: #faf9ff; color: #5e4ab0; }
+.account-dashboard .account-saved-document-actions button:nth-child(3) { border-color: #d9e5f7; background: #f6f9ff; color: #315a9f; }
+.account-dashboard .account-saved-document-actions button.remove { border-color: #f0d9dc; background: #fff8f8; color: #a13d4b; }
+.account-dashboard .account-profile-empty { padding: 2rem 1rem; border: 1px dashed #d9deea; border-radius: .8rem; background: #fafbfe; text-align: center; }
+.account-dashboard .account-profile-private-note { margin: .8rem 0 0; color: #7c8798; font-size: .65rem; }
+
+@media (max-width: 900px) {
+  .account-dashboard-layout { grid-template-columns: minmax(210px, 250px) minmax(0, 1fr); gap: .85rem; }
+  .account-dashboard-profile-card { padding: 1rem; }
+  .account-dashboard .account-saved-document-actions button { font-size: .61rem; }
+}
+
+@media (max-width: 720px) {
+  .account-dashboard-layout { grid-template-columns: minmax(0, 1fr); }
+  .account-dashboard-profile-card { position: static; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); align-items: center; gap: .4rem .85rem; }
+  .account-dashboard-profile-top { grid-row: 1 / span 2; margin: 0; }
+  .account-dashboard-profile-card .account-profile-avatar { width: 4.25rem; height: 4.25rem; flex-basis: 4.25rem; }
+  .account-dashboard-profile-card .account-profile-identity { text-align: left; }
+  .account-dashboard-profile-card .account-profile-badges { grid-column: 2; justify-content: flex-start; margin: 0; }
+  .account-dashboard-profile-card .account-profile-edit-button { grid-column: 1 / -1; margin-top: .55rem; }
+  .account-dashboard-profile-note { grid-column: 1 / -1; margin-top: .45rem; padding-top: .65rem; }
+}
+
+@media (max-width: 560px) {
+  .account-dashboard { width: min(100% - 1.2rem, 1260px); padding-top: 1.2rem !important; }
+  .account-dashboard-heading { align-items: flex-start; flex-direction: column; }
+  .account-dashboard-tools-link { min-height: 2.3rem; }
+  .account-dashboard .account-profile-section { padding: .9rem; }
+  .account-dashboard .account-profile-heading { align-items: flex-start; }
+  .account-dashboard .account-saved-document { grid-template-columns: 2.8rem minmax(0, 1fr); padding: .6rem; }
+  .account-dashboard .account-saved-document .profile-document-thumbnail { width: 2.6rem; height: 3.5rem; }
+  .account-dashboard .account-saved-document-actions { grid-column: 1 / -1; }
+  .account-dashboard .account-saved-document-actions button { flex: 1 1 calc(50% - .35rem); }
+  .account-dashboard .account-document-rename { grid-column: 1 / -1; }
+  .account-dashboard .account-profile-form { grid-template-columns: minmax(0, 1fr); }
+  .account-dashboard .account-profile-form-actions { grid-column: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-dashboard *, .account-dashboard *::before, .account-dashboard *::after { animation: none !important; transition: none !important; }
+}

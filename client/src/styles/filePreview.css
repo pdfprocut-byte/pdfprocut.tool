@@ -1,0 +1,30 @@
+.uploaded-file-list{display:grid;margin-top:1rem;overflow:hidden;border:1px solid #e6e8ef;border-radius:12px;background:#fff}
+.uploaded-file-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-width:0;padding:.7rem .85rem;border-bottom:1px solid #e6e8ef}
+.uploaded-file-row:last-child{border-bottom:0}
+.uploaded-file-meta{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-width:0;flex:1}
+.uploaded-file-meta strong{overflow:hidden;color:#273247;font-size:.9rem;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.uploaded-file-meta>span{flex:0 0 auto;color:#667085;font-size:.82rem}
+.uploaded-file-view{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;gap:.4rem;min-height:34px;padding:.35rem .65rem;border:1px solid #e4c6ca;border-radius:8px;background:#fff7f7;color:#b52336;font-size:.78rem;font-weight:650;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.uploaded-file-view:hover{transform:translateY(-1px);border-color:#d98f98;background:#fff0f1}
+.uploaded-file-view:focus-visible,.file-preview-close:focus-visible{outline:3px solid #d9273d40;outline-offset:2px}
+.file-preview-backdrop{position:fixed;inset:0;z-index:3500;display:grid;place-items:center;padding:1rem;background:#111827b8;backdrop-filter:blur(4px);animation:file-preview-fade-in .18s ease-out}
+.file-preview-dialog{width:min(100%,1060px);height:min(90vh,820px);display:flex;flex-direction:column;overflow:hidden;border:1px solid #e3e6ec;border-radius:18px;background:#fff;box-shadow:0 28px 90px #080d1866;animation:file-preview-pop-in .2s cubic-bezier(.2,.8,.2,1)}
+.file-preview-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.85rem 1rem;border-bottom:1px solid #e8eaf0;background:#fff}
+.file-preview-header>div{min-width:0;display:grid;gap:.12rem}
+.file-preview-header>div>span{color:#a1535b;font-size:.61rem;font-weight:750;letter-spacing:.14em}
+.file-preview-header h2{max-width:min(75vw,850px);overflow:hidden;margin:0;color:#172033;font-size:1rem;font-weight:700;text-overflow:ellipsis;white-space:nowrap}
+.file-preview-header small{color:#7b8493;font-size:.72rem}
+.file-preview-close{width:38px;height:38px;display:grid;flex:0 0 auto;place-items:center;border:0;border-radius:50%;background:#df2338;color:#fff;font-size:.9rem;transition:background .15s ease,transform .15s ease}
+.file-preview-close:hover{transform:rotate(90deg);background:#bd172b}
+.file-preview-content{position:relative;min-height:0;flex:1;display:grid;place-items:center;overflow:auto;background:#eef1f6}
+.file-preview-frame{width:100%;height:100%;border:0;background:#fff}
+.file-preview-image{display:block;max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 5px 22px #17203325}
+.file-preview-text{width:100%;height:100%;overflow:auto;margin:0;padding:1.25rem;background:#fff;color:#273247;font: .9rem/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.file-preview-state{display:flex;align-items:center;gap:.65rem;color:#586274;font-size:.9rem}
+.file-preview-spinner{width:22px;height:22px;border:3px solid #d7dce5;border-top-color:#df2338;border-radius:50%;animation:file-preview-spin .7s linear infinite}
+.file-preview-error{max-width:520px;margin:1rem;padding:1.15rem 1.3rem;border:1px solid #f0c3c8;border-radius:12px;background:#fff7f7;color:#a21f31;text-align:center;line-height:1.55}
+@keyframes file-preview-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes file-preview-pop-in{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes file-preview-spin{to{transform:rotate(360deg)}}
+@media(max-width:600px){.uploaded-file-row{align-items:flex-start;padding:.65rem}.uploaded-file-meta{align-items:flex-start;flex-direction:column;gap:.1rem}.uploaded-file-meta strong{max-width:58vw}.file-preview-backdrop{padding:.5rem}.file-preview-dialog{width:100%;height:min(92vh,820px);border-radius:13px}.file-preview-header{padding:.7rem}.file-preview-close{width:34px;height:34px}}
+@media(prefers-reduced-motion:reduce){.file-preview-backdrop,.file-preview-dialog,.file-preview-close,.uploaded-file-view{animation:none;transition:none}.file-preview-spinner{animation-duration:1.4s}}
