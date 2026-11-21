@@ -1,6 +1,4 @@
 import express from 'express';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -29,6 +27,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, l
 app.use(express.json({ limit: '10mb', strict: true }));
 app.use(cookieParser());
 app.get('/api/health', (req, res) => res.json({ success: true, data: { status: 'ok' } }));
+app.get('/', (_req, res) => res.json({ success: true, data: { service: 'PDF Pro Cut API', frontend: env.clientUrl } }));
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', wordDocumentRoutes);
 app.use('/api/pdf', requireEnabledTool, pdfRoutes);
@@ -37,17 +36,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/analytics', publicAnalyticsRouter);
-
-if (env.nodeEnv === 'production') {
-  const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../client/dist');
-  app.use(express.static(clientDist, { index: false }));
-  app.get('*', (req, res, next) => {
-    if (req.path === '/api' || req.path.startsWith('/api/')) return next();
-    res.sendFile(path.join(clientDist, 'index.html'), (error) => {
-      if (error) next(error);
-    });
-  });
-}
 
 app.use(notFound);
 app.use(errorHandler);
