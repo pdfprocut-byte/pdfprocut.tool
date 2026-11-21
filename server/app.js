@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
@@ -35,6 +37,18 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/assistant', assistantRoutes);
 app.use('/api/analytics', publicAnalyticsRouter);
+
+if (env.nodeEnv === 'production') {
+  const clientDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../client/dist');
+  app.use(express.static(clientDist, { index: false }));
+  app.get('*', (req, res, next) => {
+    if (req.path === '/api' || req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'), (error) => {
+      if (error) next(error);
+    });
+  });
+}
+
 app.use(notFound);
 app.use(errorHandler);
 

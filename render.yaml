@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: pdfprocut
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build -w client
+    startCommand: npm start -w server
+    healthCheckPath: /api/health
+    domains:
+      - pdfprocut.com
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_URL
+        value: https://pdfprocut.com
+      - key: VITE_API_URL
+        value: /api
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
