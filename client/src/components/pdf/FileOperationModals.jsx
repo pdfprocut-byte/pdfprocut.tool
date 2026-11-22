@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { FaCheck } from 'react-icons/fa';
+import { FaCheck, FaFileAlt } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../auth/ProtectedDownload.jsx';
 import { useProfile } from '../../context/ProfileContext.jsx';
@@ -63,19 +63,22 @@ export function OperationProgressModal({ show, title = 'PDF Pro Cut is processin
   }, [show]);
 
   if (!show) return null;
-  return createPortal(<div className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 p-3 file-operation-backdrop" role="presentation">
-    <section className="card shadow-lg w-100 file-operation-progress-modal" role="dialog" aria-modal="true" aria-labelledby="file-operation-progress-title">
-      <div className="card-body p-4">
-        <h3 className="fs-5 mb-2" id="file-operation-progress-title">{title}</h3>
-        <p className="text-muted mb-3">{description}</p>
-        <div className="progress" role="progressbar" aria-label="Estimated progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress}>
-          <div className="progress-bar progress-bar-striped progress-bar-animated" style={{ width: `${progress}%` }}/>
-        </div>
-        <div className="d-flex justify-content-between mt-2">
-          <small className="text-muted">Estimated progress</small>
-          <strong>{progress}%</strong>
-        </div>
+  return createPortal(<div className="file-operation-backdrop" role="presentation">
+    <section className="file-operation-progress-modal" role="dialog" aria-modal="true" aria-labelledby="file-operation-progress-title" aria-describedby="file-operation-progress-description">
+      <div className="file-operation-progress-visual" aria-hidden="true">
+        <span className="file-operation-progress-orbit"/>
+        <span className="file-operation-progress-orbit file-operation-progress-orbit-inner"/>
+        <span className="file-operation-progress-file"><FaFileAlt/></span>
+        <span className="file-operation-progress-spark">✦</span>
       </div>
+      <span className="file-operation-progress-brand">PDF PRO CUT <i/> DOCUMENT WORKSPACE</span>
+      <h3 id="file-operation-progress-title">{title}</h3>
+      <p className="file-operation-progress-description" id="file-operation-progress-description">{description}</p>
+      <div className="file-operation-progress-track" role="progressbar" aria-label="Estimated progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progress}>
+        <span style={{ width: `${progress}%` }}/>
+      </div>
+      <div className="file-operation-progress-status"><span><i/> Preparing your file</span><strong>{progress}%</strong></div>
+      <div className="file-operation-progress-footnote">Please keep this window open while your file is being prepared.</div>
     </section>
   </div>, document.body);
 }
@@ -121,6 +124,15 @@ export function DownloadResultModal({ href, fileName, toolSlug, title = 'PDF Pro
     setMinimizing(false);
     setMinimized(false);
     onClose?.();
+  };
+
+  const finishDownload = () => {
+    window.clearTimeout(timer.current);
+    onClose?.();
+    toast.custom((toastItem) => <div className={`pdfcut-thankyou-toast${toastItem.visible ? ' is-visible' : ''}`} role="status" aria-live="polite">
+      <span className="pdfcut-thankyou-icon"><FaCheck/></span>
+      <span className="pdfcut-thankyou-copy"><strong>Thank you for choosing PDF Pro Cut!</strong><small>Your download has started.</small></span>
+    </div>, { duration: 3000, position: 'top-center' });
   };
 
   const minimize = () => {
@@ -186,7 +198,7 @@ export function DownloadResultModal({ href, fileName, toolSlug, title = 'PDF Pro
             </div>
           </section>}
           <div className="d-flex flex-wrap gap-2 mt-3">
-            <ProtectedDownload className="btn btn-success file-operation-download-button" href={href} download={fileName}>{downloadLabel}</ProtectedDownload>
+            <ProtectedDownload className="btn btn-success file-operation-download-button" href={href} download={fileName} onDownloaded={finishDownload}>{downloadLabel}</ProtectedDownload>
           </div>
         </div>
       </section>

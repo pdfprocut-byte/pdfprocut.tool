@@ -286,7 +286,7 @@ async function convertWithAdobe(file) {
         if (!bytes.length || bytes.length > maxOutputBytes || bytes.subarray(0, 4).toString('ascii') !== 'PK\u0003\u0004') {
           throw new ApiError(502, 'Adobe returned an invalid or oversized Word file.');
         }
-        return { buffer: bytes, mode: 'adobe-cloud-layout' };
+        return { buffer: bytes, mode: 'online-layout' };
       }
       operationUrl = statusResponse.headers.get('location') || operationUrl;
       if (!trustedAdobeOperationUrl(operationUrl)) throw new ApiError(502, 'Adobe returned an invalid conversion status URL.');
@@ -582,11 +582,11 @@ async function createOfflineFallback(file, editablePages) {
 }
 
 export function getPdfToDocumentConfig() {
-  return { adobeConfigured: Boolean(env.adobePdfServicesClientId && env.adobePdfServicesClientSecret) };
+  return { conversionAvailable: Boolean(env.adobePdfServicesClientId && env.adobePdfServicesClientSecret) };
 }
 
 export async function pdfToDocument(file, { provider = 'local' } = {}) {
-  if (provider === 'adobe') return convertWithAdobe(file);
+  if (provider === 'online') return convertWithAdobe(file);
   if (provider !== 'local') throw new ApiError(400, 'Choose a supported PDF to Word converter.');
 
   const editablePages = await extractPdfPages(file);

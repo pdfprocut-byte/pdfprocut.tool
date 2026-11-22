@@ -224,7 +224,7 @@ export default function ExtraPdfToolPage({ tool }) {
     <h2>{tool.name}</h2>
     <p className="lead">{tool.description}</p>
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    {isOfficeConversion && <p className="small text-secondary">Office files are converted using the available conversion service. If Adobe PDF Services is enabled, processing may count toward the Adobe plan.</p>}
+    {isOfficeConversion && <p className="small text-secondary">Office files are converted using the available conversion service. Availability may vary.</p>}
     {isPowerPoint && <p className="small text-secondary">Slides contain page images to preserve the PDF appearance; slide text is not editable.</p>}
     {isPdfA && <p className="small text-secondary">The PDF/A-1b result is image-based to remove unsupported content, so text is not selectable. For formal archiving, verify the output with a PDF/A validator.</p>}
     {isMetadataCleaner && <p className="small text-secondary">Removes document properties, document-level XMP metadata, and the document language tag. It does not redact page content or remove metadata embedded in images, comments, or attachments.</p>}

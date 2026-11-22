@@ -13,7 +13,7 @@ export default function PdfToDocumentPage({ tool }) {
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [openingEditor, setOpeningEditor] = useState(false);
-  const [adobeConfigured, setAdobeConfigured] = useState(null);
+  const [conversionAvailable, setConversionAvailable] = useState(null);
   const [result, setResult] = useState(null);
   const draft = { state: {}, files: file ? [file] : [], signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(`tool:${tool.slug}`, draft, (saved) => setFile(saved.files[0] || null));
@@ -22,8 +22,8 @@ export default function PdfToDocumentPage({ tool }) {
     let active = true;
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/pdf/pdf-to-document/config`)
       .then((response) => response.json())
-      .then((payload) => { if (active) setAdobeConfigured(Boolean(payload.data?.adobeConfigured)); })
-      .catch(() => { if (active) setAdobeConfigured(false); });
+      .then((payload) => { if (active) setConversionAvailable(Boolean(payload.data?.conversionAvailable)); })
+      .catch(() => { if (active) setConversionAvailable(false); });
     return () => { active = false; };
   }, []);
 
@@ -38,7 +38,7 @@ export default function PdfToDocumentPage({ tool }) {
     try {
       const body = new FormData();
       body.append('files', file);
-      body.append('provider', 'adobe');
+      body.append('provider', 'online');
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/pdf/${tool.endpoint}`, {
         method: 'POST',
         body,
@@ -77,16 +77,16 @@ export default function PdfToDocumentPage({ tool }) {
     <h2>{tool.name}</h2>
     <p className="lead">Convert selectable text in a PDF into an editable Word document.</p>
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    <div className={`alert ${adobeConfigured === true ? 'alert-info' : 'alert-warning'}`} role="note">
-      {adobeConfigured === true
+    <div className={`alert ${conversionAvailable === true ? 'alert-info' : 'alert-warning'}`} role="note">
+      {conversionAvailable === true
         ? 'PDF Pro Cut converts your PDF to Word using our online conversion service. Your PDF is sent securely for processing; scanned pages can also use OCR. Some layout details may still shift in Word.'
-        : adobeConfigured === false
+        : conversionAvailable === false
           ? 'PDF Pro Cut online conversion is temporarily unavailable. PDF to Word conversion will be enabled when the service is ready.'
           : 'Preparing PDF Pro Cut conversion…'}
     </div>
     <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); }}/>
     {file && <UploadedFileList files={file}/>}
-    <button className="btn btn-primary mt-4" type="button" onClick={convert} disabled={busy || !file || adobeConfigured !== true}>
+    <button className="btn btn-primary mt-4" type="button" onClick={convert} disabled={busy || !file || conversionAvailable !== true}>
       {busy ? 'Converting to Word…' : 'Convert to Word'}
     </button>
     <button className="btn btn-outline-primary mt-4 ms-2" type="button" onClick={editDocument} disabled={!file || busy || openingEditor}>

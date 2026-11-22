@@ -79,10 +79,12 @@ function rankTools(query) {
   const queryText = normalize(query).split(' ').filter((word) => !['a', 'an', 'the', 'my', 'your', 'all', 'every'].includes(word)).join(' ');
   const queryTokens = new Set(tokenize(query));
   return searchableTools.map(({ tool, phrases, terms }) => {
-    const signal = Math.max(0, ...phrases.filter((phrase) => containsPhrase(queryText, phrase)).map((phrase) => 8 + phrase.split(' ').length * 4));
+    const exactNameMatch = query.trim().toLowerCase() === tool.name.toLowerCase();
+    const signal = Math.max(exactNameMatch ? 40 : 0, ...phrases.filter((phrase) => containsPhrase(queryText, phrase)).map((phrase) => 8 + phrase.split(' ').length * 4));
     const overlap = [...queryTokens].filter((word) => terms.has(word)).length;
     const semanticSignal = overlap >= 2 && overlap / Math.max(queryTokens.size, 1) >= 0.4 ? 1 : 0;
     let score = signal + Math.min(overlap, 4) * 0.5 + (signal ? 0 : semanticSignal * overlap * 0.6);
+    if (queryText === 'pdf to image' && tool.slug === 'pdf-to-jpg') score += 4;
     if (signal && tool.slug === 'compress-image' && queryTokens.has('image')) score += 4;
     if (signal && tool.slug === 'compress-files' && /\b(pdf|word|excel|powerpoint|office)\b/.test(queryText)) score += 4;
     return { tool, score, signal: signal || semanticSignal };

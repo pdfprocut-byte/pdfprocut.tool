@@ -19,6 +19,17 @@ export const errorHandler = (err, req, res, next) => {
           : 'The upload format or fields are invalid.';
   }
 
+  if (/Adobe|PDF Services/i.test(message)) {
+    const detail = message.toLowerCase();
+    message = /too large|oversized/.test(detail)
+      ? 'This file is too large for conversion.'
+      : /too long|timed out|timeout/.test(detail)
+        ? 'File conversion took too long. Please try again.'
+        : /limit reached|usage limit/.test(detail)
+          ? 'The conversion service is busy. Please try again later.'
+          : 'File conversion is temporarily unavailable. Please try again later.';
+  }
+
   const body = { success: false, error: message };
   if (err.code && !isMulterError) body.code = err.code;
   res.status(status).json(body);

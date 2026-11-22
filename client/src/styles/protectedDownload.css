@@ -6,6 +6,7 @@
 .download-auth-dialog h2{margin:0;color:#202a3b;font-size:clamp(1.45rem,4vw,1.8rem);font-weight:740;letter-spacing:-.04em;line-height:1.2}
 .download-auth-dialog>p{margin:.6rem 0 1.25rem;color:#6d7787;font-size:.9rem;line-height:1.55}
 .download-auth-error{padding:.7rem .8rem;border:1px solid #f1c4c8;border-radius:8px;background:#fff4f4;color:#a21f31!important;font-size:.8rem!important}
+.download-auth-notice{padding:.7rem .8rem;border:1px solid #c9e8d3;border-radius:8px;background:#f2fbf5;color:#236c3c!important;font-size:.8rem!important}
 .download-auth-form{display:grid;gap:.8rem}
 .download-auth-form label{display:grid;gap:.4rem;color:#354054;font-size:.8rem;font-weight:650}
 .download-auth-form input{width:100%;min-height:46px;padding:.65rem .75rem;border:1px solid #dfe3e9;border-radius:8px;background:#fff;color:#172033;font-size:1rem;font-weight:400}
@@ -17,4 +18,7 @@
 .download-auth-register{margin:1rem 0 0!important;text-align:center}
 .download-auth-register a{color:#b52336;font-weight:700;text-decoration:none}
 .download-auth-register a:hover{text-decoration:underline}
+.download-auth-register button{padding:0;border:0;background:none;color:#b52336;font:inherit;font-weight:700;cursor:pointer}
+.download-auth-register button:hover{text-decoration:underline}
+.download-auth-register button:disabled{color:#8790a0;cursor:wait}
 @media(max-width:480px){.download-auth-dialog{padding:1.4rem;border-radius:16px}.download-auth-backdrop{padding:.75rem}}
