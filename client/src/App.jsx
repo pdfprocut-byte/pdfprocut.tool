@@ -21,9 +21,57 @@ import AdminDashboard from './pages/AdminDashboard.jsx';
 import { fetchWithCredentials, apiBaseUrl } from './lib/authApi.js';
 import { useAuth } from './context/AuthContext.jsx';
 import AssistantChat from './components/AssistantChat.jsx';
+import { toolCatalog } from '../../shared/toolCatalog.mjs';
 
 const Placeholder = ({ title }) => <main className="container py-5"><h2>{title}</h2><p>The page you requested could not be found.</p></main>;
 const WordEditorPage = lazy(() => import('./pages/WordEditorPage.jsx'));
+const homeSeo = {
+  title: 'PDF Pro Cut | Online PDF Editor and Converter',
+  description: 'Edit PDFs, convert files to Word and PDF, merge pages, add signatures, and compress documents online with PDF Pro Cut.'
+};
+const pageSeo = {
+  '/tools': { title: 'Online PDF and Document Tools | PDF Pro Cut', description: 'Browse online PDF, Word, Excel, PowerPoint, and image tools to edit, convert, organize, and compress documents.' },
+  '/guides': { title: 'PDF and Document How-to Guides | PDF Pro Cut', description: 'Step-by-step guides for editing, converting, compressing, and organizing PDF and Office documents.' },
+  '/about': { title: 'About PDF Pro Cut', description: 'Learn about PDF Pro Cut and our online tools for working with PDFs and documents.' },
+  '/contact': { title: 'Contact PDF Pro Cut', description: 'Contact PDF Pro Cut support with questions or feedback about our document tools.' },
+  '/privacy-policy': { title: 'Privacy Policy | PDF Pro Cut', description: 'Read how PDF Pro Cut handles account details, uploaded documents, and browser-stored files.' },
+  '/terms': { title: 'Terms of Use | PDF Pro Cut', description: 'Read the terms for using PDF Pro Cut online document tools.' }
+};
+const noIndexPaths = new Set(['/login', '/register', '/verify-email', '/forgot-password', '/profile', '/word-editor']);
+
+function setMeta(selector, attribute, value) {
+  let element = document.head.querySelector(selector);
+  if (!element) {
+    element = document.createElement(selector.startsWith('meta') ? 'meta' : 'link');
+    document.head.appendChild(element);
+  }
+  element.setAttribute(attribute, value);
+}
+
+function SeoMetadata() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const path = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+    const toolSlug = path.match(/^\/tools\/([a-z0-9-]+)$/i)?.[1]?.toLowerCase();
+    const tool = toolSlug ? toolCatalog.find((item) => item.slug === toolSlug) : null;
+    const metadata = tool
+      ? { title: `${tool.name} Online | PDF Pro Cut`, description: tool.description }
+      : pageSeo[path] || homeSeo;
+    const canonicalUrl = `https://pdfprocut.com${path}`;
+    const robots = noIndexPaths.has(path) || path.startsWith('/admin') ? 'noindex,nofollow' : 'index,follow';
+
+    document.title = metadata.title;
+    setMeta('meta[name="description"]', 'content', metadata.description);
+    setMeta('meta[name="robots"]', 'content', robots);
+    setMeta('meta[property="og:title"]', 'content', metadata.title);
+    setMeta('meta[property="og:description"]', 'content', metadata.description);
+    setMeta('meta[property="og:url"]', 'content', canonicalUrl);
+    setMeta('link[rel="canonical"]', 'href', canonicalUrl);
+  }, [pathname]);
+
+  return null;
+}
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -92,6 +140,7 @@ export default function App() {
     <ProfileProvider>
       <div className={`app${isAuthPage ? ' app-auth-page' : ''}${isAdminPage ? ' app-admin-page' : ''}`}>
         <ScrollToTop/>
+        <SeoMetadata/>
         <AnalyticsTracker/>
         {!isAdminPage && <Navbar/>}
         <Routes>
