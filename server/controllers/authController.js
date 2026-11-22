@@ -8,6 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { env } from '../config/env.js';
 import { sendEmailVerificationCode, verifyEmailCode } from '../services/emailVerificationService.js';
+import { sendPasswordResetCode, resetPasswordWithCode } from '../services/passwordResetService.js';
 
 const googleClient = new OAuth2Client();
 const token = (user) => jwt.sign({ id: user._id, sessionVersion: user.sessionVersion || 0 }, env.jwtSecret, {
@@ -22,6 +23,7 @@ const sessionCookieName = env.nodeEnv === 'production' ? '__Host-pdfpro_session'
 const setSession = (res, user) => res.cookie(sessionCookieName, token(user), { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const otpFields = '+emailOtpHash +emailOtpExpiresAt +emailOtpLastSentAt +emailOtpWindowStartedAt +emailOtpSentCount +emailOtpAttemptCount';
+const passwordResetOtpFields = '+passwordResetOtpHash +passwordResetOtpExpiresAt +passwordResetOtpLastSentAt +passwordResetOtpWindowStartedAt +passwordResetOtpSentCount +passwordResetOtpAttemptCount';
 
 export const register = asyncHandler(async (req, res) => {
   const name = String(req.body.name || '').trim();
@@ -85,6 +87,30 @@ export const resendVerification = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email }).select(otpFields);
   if (user && !user.emailVerified) await sendEmailVerificationCode(user);
   res.json({ success: true, data: { message: 'If this account needs verification, a code has been sent.' } });
+});
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const user = await User.findOne({ email, emailVerified: true, blockedAt: null }).select(passwordResetOtpFields);
+  if (user) {
+    try {
+      await sendPasswordResetCode(user);
+    } catch (error) {
+      if (!['OTP_COOLDOWN', 'OTP_RATE_LIMIT'].includes(error.code)) {
+        console.error('Password reset email could not be sent:', error.message);
+      }
+    }
+  }
+  res.json({ success: true, data: { message: 'If a verified account exists for that email, a password reset code has been sent.' } });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const email = normalizeEmail(req.body.email);
+  const user = await User.findOne({ email, emailVerified: true, blockedAt: null })
+    .select(`+passwordHash +sessionVersion ${passwordResetOtpFields}`);
+  if (!user) throw new ApiError(400, 'That reset code is invalid or expired. Request a new one and try again.', 'PASSWORD_RESET_CODE_INVALID');
+  await resetPasswordWithCode(user, String(req.body.code), req.body.password);
+  res.json({ success: true, data: { message: 'Password updated. Sign in with your new password.' } });
 });
 
 export const googleLogin = asyncHandler(async (req, res) => {

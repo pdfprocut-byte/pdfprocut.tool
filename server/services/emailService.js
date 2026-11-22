@@ -75,3 +75,47 @@ export async function sendVerificationEmail({ name, email, code }) {
 
   await getTransporter().sendMail({ from: env.smtp.from, to: email, subject, text, html });
 }
+
+export async function sendPasswordResetEmail({ name, email, code }) {
+  const recipientName = escapeHtml(name || 'there');
+  const subject = 'Reset your PDF Pro Cut password';
+  const text = `Hi ${name || 'there'},\n\nYour PDF Pro Cut password reset code is ${code}. It expires in 10 minutes.\n\nIf you did not request this, you can ignore this email.`;
+  const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#172033"><h1 style="font-size:22px">Reset your password</h1><p>Hi ${recipientName},</p><p>Use this code to choose a new password for your PDF Pro Cut account:</p><p style="font-size:30px;letter-spacing:8px;font-weight:700;color:#d9273d">${code}</p><p>This code expires in 10 minutes.</p><p>If you did not request this, you can ignore this email.</p></div>`;
+
+  if (env.resend.apiKey || env.resend.from) {
+    if (!env.resend.apiKey || !env.resend.from) {
+      if (env.devOtpLogging) {
+        logDevelopmentOtp(email, code);
+        return;
+      }
+      throw new ApiError(503, 'Password reset email is not configured correctly.');
+    }
+
+    let response;
+    try {
+      response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${env.resend.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ from: env.resend.from, to: [email], subject, text, html })
+      });
+    } catch {
+      throw new ApiError(502, 'Could not send the password reset email.', 'EMAIL_PROVIDER_UNAVAILABLE');
+    }
+
+    if (!response.ok) throw new ApiError(502, 'Could not send the password reset email.', 'EMAIL_DELIVERY_FAILED');
+    return;
+  }
+
+  if (!env.smtp.host || !env.smtp.from) {
+    if (env.devOtpLogging) {
+      logDevelopmentOtp(email, code);
+      return;
+    }
+    throw new ApiError(503, 'Password reset email is not configured.');
+  }
+
+  await getTransporter().sendMail({ from: env.smtp.from, to: email, subject, text, html });
+}

@@ -63,6 +63,7 @@ export default function LoginPage() {
       <form className="auth-form" onSubmit={handleSubmit}>
         <label>Email address<input type="email" autoComplete="email" required maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com"/></label>
         <PasswordField label="Password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password"/>
+        <p className="auth-forgot-password"><Link to="/forgot-password">Forgot password?</Link></p>
         <button className="auth-submit" type="submit" disabled={busy}>{busy ? 'Signing in...' : 'Sign in'}</button>
       </form>
       {isGoogleSignInEnabled && <>

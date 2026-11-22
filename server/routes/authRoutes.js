@@ -11,6 +11,8 @@ const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHe
 const registrationLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
 const otpSendLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
 const otpVerifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
+const passwordResetSendLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
+const passwordResetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
 const googleLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
 const validate = (req, res, next) => {
   const errors = validationResult(req);
@@ -25,6 +27,8 @@ r.post('/login', loginLimiter, requireAuthCsrf, email(), body('password').isStri
 r.post('/admin/login', loginLimiter, requireAuthCsrf, email(), body('password').isString().isLength({ min: 1, max: 128 }).withMessage('Enter a valid password.'), validate, c.adminLogin);
 r.post('/verify-email', otpVerifyLimiter, requireAuthCsrf, email(), body('code').isString().matches(/^\d{6}$/).withMessage('Enter the 6 digit code.'), validate, c.verifyEmail);
 r.post('/resend-verification', otpSendLimiter, requireAuthCsrf, email(), validate, c.resendVerification);
+r.post('/forgot-password', passwordResetSendLimiter, requireAuthCsrf, email(), validate, c.forgotPassword);
+r.post('/reset-password', passwordResetLimiter, requireAuthCsrf, email(), body('code').isString().matches(/^\d{6}$/).withMessage('Enter the 6 digit code.'), body('password').isString().isLength({ min: 8, max: 128 }).withMessage('Password must be 8-128 characters.'), validate, c.resetPassword);
 r.post('/google', googleLimiter, requireAuthCsrf, body('credential').isString().isLength({ min: 100, max: 5000 }).withMessage('Google sign-in credential is invalid.'), validate, c.googleLogin);
 r.post('/logout', optionalAuth, requireAuthCsrf, c.logout);
 r.get('/session', optionalAuth, c.session);

@@ -13,6 +13,7 @@ import TermsPage from './pages/TermsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProfileProvider } from './context/ProfileContext.jsx';
 import AccountProfilePage from './pages/AccountProfilePage.jsx';
@@ -84,7 +85,7 @@ function AnalyticsTracker() {
 
 export default function App() {
   const location = useLocation();
-  const isAuthPage = ['/login', '/register'].includes(location.pathname);
+  const isAuthPage = ['/login', '/register', '/forgot-password'].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return <AuthProvider>
@@ -105,6 +106,7 @@ export default function App() {
           <Route path="/login" element={<LoginPage/>}/>
           <Route path="/register" element={<RegisterPage/>}/>
           <Route path="/verify-email" element={<VerifyEmailPage/>}/>
+          <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
           <Route path="/profile" element={<AccountProfilePage/>}/>
           <Route path="/word-editor" element={<Suspense fallback={<main className="container py-5">Opening the Word Editor…</main>}><WordEditorPage/></Suspense>}/>
           <Route path="/admin" element={<AdminDashboard/>}/>
