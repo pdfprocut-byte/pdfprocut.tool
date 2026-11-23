@@ -8,7 +8,7 @@ import { getToolCategoryClass, tools } from '../tools.js';
 import '../styles/toolsPage.css';
 
 const categories = [...new Set(tools.map((tool) => tool.category))];
-const featuredSlugs = ['merge-pdf', 'split-pdf', 'compress-files', 'pdf-to-document', 'pdf-to-powerpoint', 'pdf-to-excel', 'word-to-pdf', 'powerpoint-to-pdf', 'excel-to-pdf', 'edit-pdf'];
+const featuredSlugs = ['merge-pdf', 'split-pdf', 'compress-files', 'kerala-psc-photo-resizer', 'ssc-photo-resizer', 'passport-size-photo-maker', 'pdf-to-document', 'pdf-to-powerpoint', 'pdf-to-excel', 'document-kb-compressor', 'word-to-pdf', 'powerpoint-to-pdf', 'excel-to-pdf', 'edit-pdf'];
 const toolRanks = new Map(featuredSlugs.map((slug, index) => [slug, index]));
 const orderedTools = [...tools].sort((a, b) => (toolRanks.get(a.slug) ?? featuredSlugs.length) - (toolRanks.get(b.slug) ?? featuredSlugs.length));
 
@@ -34,8 +34,8 @@ export default function ToolsPage() {
         <nav className="tools-breadcrumb" aria-label="Breadcrumb">
           <Link to="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Tools</span>
         </nav>
-        <h1>File <em>tools.</em></h1>
-        <p>Find tools for PDFs, Word documents, spreadsheets, presentations, and images.</p>
+        <h1>Online <em>file tools.</em></h1>
+        <p>Prepare government application photos, signatures, and documents, or edit PDFs and Office files.</p>
         <div className="tools-search-wrap">
           <FaSearch aria-hidden="true"/>
           <input
@@ -48,6 +48,21 @@ export default function ToolsPage() {
           {query && <button type="button" aria-label="Clear search" onClick={() => setQuery('')}><FaTimes aria-hidden="true"/></button>}
         </div>
       </div>
+    </section>
+
+    <section className="government-tools-overview container" aria-labelledby="government-tools-title">
+      <div>
+        <span className="pdfpro-info-eyebrow">APPLICATION IMAGE TOOLS</span>
+        <h2 id="government-tools-title">Prepare photos and documents for applications</h2>
+        <p>Choose dimensions and file-size targets from the current application notice, preview the result, then download a copy to check before submitting.</p>
+      </div>
+      <ul>
+        <li>Automatic photo and signature resizing</li>
+        <li>Width, height, and aspect-ratio controls</li>
+        <li>KB compression and DPI metadata</li>
+        <li>White backgrounds and signature cropping</li>
+        <li>Live preview, instant download, and mobile-friendly layouts</li>
+      </ul>
     </section>
 
     <section ref={toolsSectionRef} className="tools-directory-content container" aria-label="Tool directory">

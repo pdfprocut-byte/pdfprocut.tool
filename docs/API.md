@@ -41,8 +41,8 @@ All JSON responses have a `success` boolean. Processing responses stream an atta
 | POST | `/api/pdf/pdf-to-document` | `files` PDF | DOCX; selectable text, up to 100 pages |
 | POST | `/api/pdf/pdf-to-document/text` | `files` PDF | JSON with extracted text for editing |
 
-| POST | `/api/pdf/compress` | `files` PDF or modern Word/Excel/PowerPoint OOXML | `targetSizeMb` between 0.05 and 25; optional `quality`: `clear`, `balanced`, or `smallest` |
-| POST | `/api/image/compress` | `files` JPG or PNG | `targetSizeMb` between 0.05 and 25; optional `quality`: `clear`, `balanced`, or `smallest` |
+| POST | `/api/pdf/compress` | `files` PDF or modern Word/Excel/PowerPoint OOXML | `targetSizeMb` between 1/1024 and 25 (1 KB to 25 MB); optional `quality`: `clear`, `balanced`, or `smallest` |
+| POST | `/api/image/compress` | `files` JPG or PNG | `targetSizeMb` between 1/1024 and 1024 (1 KB to 1 GB); optional `quality`: `clear`, `balanced`, or `smallest` |
 
 Authentication routes are `/api/auth/csrf`, `/register`, `/login`, `/google`, `/verify-email`, `/resend-verification`, `/logout`, and `/me` under `/api/auth`. Mutating routes require the CSRF token returned by `/csrf` in the `X-CSRF-Token` header. Sessions use an HttpOnly JWT cookie. Local registrations require email OTP verification before a session is created. Google login accepts an ID token in `credential` and verifies it server-side.
 

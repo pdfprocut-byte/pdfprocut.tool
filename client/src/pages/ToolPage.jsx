@@ -14,6 +14,7 @@ import TextToPdfPage from './TextToPdfPage.jsx';
 import PdfToDocumentPage from './PdfToDocumentPage.jsx';
 import CompressFilesPage from './CompressFilesPage.jsx';
 import CompressImagePage from './CompressImagePage.jsx';
+import GovernmentImageToolPage from './GovernmentImageToolPage.jsx';
 import ExtraPdfToolPage from './ExtraPdfToolPage.jsx';
 import { createDownloadName } from '../utils/downloadName.js';
 import ToolGuide from '../components/tools/ToolGuide.jsx';
@@ -39,7 +40,7 @@ function ToolPageContent({ tool }) {
   const [start, setStart] = useState('1'); const [result, setResult] = useState(null);
   const [ocrLanguages, setOcrLanguages] = useState(['eng']);
   const [openingText, setOpeningText] = useState(false);
-  const customEndpoint = ['remove-pages', 'add-watermark', 'add-page-numbers', 'scan-to-pdf', 'convert-to-pdf', 'text-to-pdf', 'text-to-document', 'pdf-to-document', 'compress', 'compress-image', 'repair-pdf', 'crop-pdf', 'edit-pdf', 'flatten-pdf', 'extract-images', 'unlock-pdf', 'clean-metadata', 'sign-pdf', 'redact-pdf', 'pdf-forms', 'html-to-pdf', 'to-jpg', 'to-png', 'to-markdown', 'to-excel', 'pdf-to-powerpoint', 'pdf-to-pdfa', 'office-to-pdf', 'summarize', 'compare'];
+  const customEndpoint = ['remove-pages', 'add-watermark', 'add-page-numbers', 'scan-to-pdf', 'convert-to-pdf', 'text-to-pdf', 'text-to-document', 'pdf-to-document', 'compress', 'compress-image', 'government-image', 'repair-pdf', 'crop-pdf', 'edit-pdf', 'flatten-pdf', 'extract-images', 'unlock-pdf', 'clean-metadata', 'sign-pdf', 'redact-pdf', 'pdf-forms', 'html-to-pdf', 'to-jpg', 'to-png', 'to-markdown', 'to-excel', 'pdf-to-powerpoint', 'pdf-to-pdfa', 'office-to-pdf', 'summarize', 'compare'];
   const isCustomTool = Boolean(tool && (customEndpoint.includes(tool.endpoint) || tool.merge));
   const savedDraft = { state: { pages, selected, text, angle, start, ...(tool?.ocr && { ocrLanguages }) }, files, signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(tool ? `tool:${tool.slug}` : '', savedDraft, (draft) => {
@@ -63,6 +64,7 @@ function ToolPageContent({ tool }) {
   else if (tool.endpoint === 'pdf-to-document') customToolPage = <PdfToDocumentPage tool={tool}/>;
   else if (tool.endpoint === 'compress') customToolPage = <CompressFilesPage tool={tool}/>;
   else if (tool.endpoint === 'compress-image') customToolPage = <CompressImagePage tool={tool}/>;
+  else if (tool.endpoint === 'government-image') customToolPage = <GovernmentImageToolPage tool={tool}/>;
   else if (['repair-pdf', 'crop-pdf', 'edit-pdf', 'flatten-pdf', 'extract-images', 'unlock-pdf', 'clean-metadata', 'sign-pdf', 'redact-pdf', 'pdf-forms', 'html-to-pdf', 'to-jpg', 'to-png', 'to-markdown', 'to-excel', 'pdf-to-powerpoint', 'pdf-to-pdfa', 'office-to-pdf', 'summarize', 'compare'].includes(tool.endpoint)) customToolPage = <ExtraPdfToolPage tool={tool}/>;
   else if (tool.merge) customToolPage = <MergePdfPage tool={tool}/>;
   if (customToolPage) return <>{customToolPage}<ToolGuide tool={tool}/></>;

@@ -9,12 +9,12 @@ export default function PrivacyPolicyPage() {
       <header className="content-page-header">
         <span className="pdfpro-info-eyebrow">PDF PRO CUT POLICIES</span>
         <h1>Privacy Policy</h1>
-        <p>Last updated: November 20, 2026</p>
+        <p>Last updated: November 23, 2026</p>
         <p>This notice explains what PDF Pro Cut processes when you use its document tools, create an account, or sign in. The services and providers enabled by a particular deployment can affect how information is handled.</p>
       </header>
 
       <section><h2>Files and text you submit</h2>
-        <p>When you use a document tool, the selected files and the options or text you provide are sent to the PDF Pro Cut API to produce the requested result. Standard PDF and image uploads are held in server memory while the request is processed; the API returns the output in the response. The app does not publish uploaded documents as public files.</p>
+        <p>Government photo, signature, background, and DPI tools process source images in your browser. Those images are not sent to the PDF Pro Cut API. Other tools that need server processing send the selected files and the options or text you provide to the PDF Pro Cut API to produce the requested result. Standard PDF and image uploads are held in server memory while the request is processed; the API returns the output in the response. The app does not publish uploaded documents as public files.</p>
         <p>Word, Excel, and PowerPoint to PDF conversion uses a separate LibreOffice worker when that feature is configured. That worker writes each job into a temporary directory and removes the directory when the job ends. Do not submit a document unless you are authorized to process it and are comfortable with the hosting environment used by the site.</p>
       </section>
 

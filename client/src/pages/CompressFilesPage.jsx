@@ -9,23 +9,26 @@ import { useBrowserDraft } from '../lib/browserDraft.js';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const targetOptions = [
-  ['0.09765625', '100 KB'], ['0.25', '250 KB'], ['0.5', '500 KB'], ['1', '1 MB'], ['2', '2 MB'],
+  ['0.0009765625', '1 KB'], ['0.048828125', '50 KB'], ['0.09765625', '100 KB'], ['0.1953125', '200 KB'], ['0.25', '250 KB'], ['0.5', '500 KB'], ['1', '1 MB'], ['2', '2 MB'],
   ['5', '5 MB'], ['10', '10 MB'], ['20', '20 MB'], ['24', '24 MB'], ['custom', 'Custom size']
 ];
+const unitToMb = { KB: 1 / 1024, MB: 1 };
 const formatSize = (bytes) => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 
 export default function CompressFilesPage({ tool }) {
   const [file, setFile] = useState(null);
   const [targetChoice, setTargetChoice] = useState('0.09765625');
   const [customTarget, setCustomTarget] = useState('1.5');
+  const [customTargetUnit, setCustomTargetUnit] = useState('MB');
   const [quality, setQuality] = useState('clear');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
-  const draft = { state: { targetChoice, customTarget, quality }, files: file ? [file] : [], signature: null };
+  const draft = { state: { targetChoice, customTarget, customTargetUnit, quality }, files: file ? [file] : [], signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(`tool:${tool.slug}`, draft, (saved) => {
     setFile(saved.files[0] || null);
     if (saved.state?.targetChoice) setTargetChoice(saved.state.targetChoice);
     if (saved.state?.customTarget) setCustomTarget(saved.state.customTarget);
+    if (saved.state?.customTargetUnit === 'KB' || saved.state?.customTargetUnit === 'MB') setCustomTargetUnit(saved.state.customTargetUnit);
     if (saved.state?.quality) setQuality(saved.state.quality);
   });
 
@@ -33,11 +36,19 @@ export default function CompressFilesPage({ tool }) {
     if (result?.url) URL.revokeObjectURL(result.url);
   }, [result]);
 
-  const targetSizeMb = targetChoice === 'custom' ? Number(customTarget) : Number(targetChoice);
+  const targetSizeMb = targetChoice === 'custom' ? Number(customTarget) * unitToMb[customTargetUnit] : Number(targetChoice);
+  const changeCustomTargetUnit = (nextUnit) => {
+    const value = Number(customTarget);
+    if (Number.isFinite(value) && value > 0) {
+      const converted = value * unitToMb[customTargetUnit] / unitToMb[nextUnit];
+      setCustomTarget(String(Number(converted.toPrecision(7))));
+    }
+    setCustomTargetUnit(nextUnit);
+  };
 
   const compress = async () => {
     if (!file) return toast.error('Select a file first');
-    if (!Number.isFinite(targetSizeMb) || targetSizeMb < 0.05 || targetSizeMb > 25) return toast.error('Choose a target between 50 KB and 25 MB');
+    if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) return toast.error('Choose a target between 1 KB and 25 MB');
     setBusy(true);
     setResult(null);
     try {
@@ -74,6 +85,7 @@ export default function CompressFilesPage({ tool }) {
     <Link to="/tools" className="back">← All tools</Link>
     <h2>{tool.name}</h2>
     <p className="lead">Choose a maximum size for a PDF or a modern Word, Excel, or PowerPoint file.</p>
+    {tool.gov?.kind === 'pdf-compress' && <p className="government-tool-local-note" role="note">This document is sent to the PDF Pro Cut server for compression. Confirm the current application limit and review the compressed file before submitting it.</p>}
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
     <div className="alert alert-warning" role="note">The selected size is a maximum. Compression tries to preserve clarity first, then lowers image quality further if needed. PDF pages may become images, so text may no longer be selectable. The original stays unchanged.</div>
     <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); }}/>
@@ -88,8 +100,16 @@ export default function CompressFilesPage({ tool }) {
         <option value="smallest">Smallest size (lower clarity)</option>
       </select>
     </label>
-    {targetChoice === 'custom' && <label className="mt-3">Custom target (MB)<input className="form-control" type="number" min="0.05" max="25" step="0.05" value={customTarget} onChange={(event) => setCustomTarget(event.target.value)}/>
-    </label>}
+    {targetChoice === 'custom' && <div className="mt-3">
+      <label htmlFor="document-compression-target">Custom target maximum</label>
+      <div className="input-group">
+        <input id="document-compression-target" className="form-control" type="number" min={customTargetUnit === 'KB' ? 1 : 1 / 1024} max={customTargetUnit === 'KB' ? 25600 : 25} step={customTargetUnit === 'KB' ? 1 : 0.01} value={customTarget} onChange={(event) => setCustomTarget(event.target.value)}/>
+        <select className="form-select" aria-label="Custom target size unit" value={customTargetUnit} onChange={(event) => changeCustomTargetUnit(event.target.value)}>
+          <option value="KB">KB</option><option value="MB">MB</option>
+        </select>
+      </div>
+      <small className="text-secondary">Set a maximum from 1 KB to 25 MB. Whether compression reaches it depends on the file and quality setting.</small>
+    </div>}
     <button className="btn btn-primary mt-4" type="button" onClick={compress} disabled={busy || !file}>
       {busy ? 'Compressing…' : 'Compress file'}
     </button>

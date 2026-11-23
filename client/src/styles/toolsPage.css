@@ -30,6 +30,21 @@
 .tools-directory-hero h1 em { color: var(--brand); font-style: normal; }
 .tools-directory-hero p { margin: .9rem 0 1.3rem; color: var(--muted); }
 
+.government-tools-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(18rem, .9fr);
+  gap: 1.5rem;
+  align-items: center;
+  margin-top: 1.35rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid #e4dcf5;
+  border-radius: 1rem;
+  background: linear-gradient(120deg, #faf7ff, #f4fbff);
+}
+.government-tools-overview h2 { margin: .3rem 0 .45rem; color: #2f2850; font-size: 1.12rem; font-weight: 760; }
+.government-tools-overview p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.6; }
+.government-tools-overview ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem 1rem; margin: 0; padding-left: 1.1rem; color: #51486a; font-size: .77rem; line-height: 1.5; }
+
 .tools-search-wrap {
   display: flex;
   width: min(100%, 48rem);
@@ -194,6 +209,10 @@
 @media (max-width: 991px) { .tools-directory .tool-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 767px) { .tools-directory .tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 490px) { .tools-directory .tool-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .government-tools-overview { grid-template-columns: 1fr; gap: .85rem; }
+  .government-tools-overview ul { grid-template-columns: 1fr; }
+}
 
 @media (min-width: 992px) {
   .tools-directory .tool-card:nth-child(4n + 2) { --tools-reveal-delay: .075s; }

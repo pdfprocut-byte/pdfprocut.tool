@@ -35,7 +35,7 @@ export const pdfToDocumentText = asyncHandler(async(req,res)=>res.json({ success
 export const compress = asyncHandler(async(req,res)=>{
   const uploaded = file(req);
   const targetSizeMb = Number(req.body.targetSizeMb);
-  if (!Number.isFinite(targetSizeMb) || targetSizeMb < 0.05 || targetSizeMb > 25) throw new ApiError(400, 'Choose a target size between 50 KB and 25 MB');
+  if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) throw new ApiError(400, 'Choose a target size between 1 KB and 25 MB');
   const quality = String(req.body.quality || 'clear');
   const result = await compression.compressFile(uploaded, targetSizeMb, quality);
   const extension = String(uploaded.originalname || '').split('.').at(-1).toLowerCase();

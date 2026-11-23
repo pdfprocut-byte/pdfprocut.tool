@@ -20,4 +20,7 @@ const iconBySlug = {
   'compress-files': FaCompress, 'compress-image': FaFileImage
 };
 
-export const tools = toolCatalog.map((tool) => ({ ...tool, icon: iconBySlug[tool.slug] }));
+export const tools = toolCatalog.map((tool) => ({
+  ...tool,
+  icon: iconBySlug[tool.slug] || (tool.gov?.kind === 'pdf-compress' ? FaCompress : FaFileImage)
+}));
