@@ -1,27 +1,27 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getToolCategoryClass, tools } from '../tools.js';
 import FileUploader from '../components/pdf/FileUploader.jsx';
-import PdfPagePreview from '../components/pdf/PdfPagePreview.jsx';
 import { DownloadResultModal, OperationProgressModal } from '../components/pdf/FileOperationModals.jsx';
-import MergePdfPage from './MergePdfPage.jsx';
-import RemovePagesPage from './RemovePagesPage.jsx';
-import WatermarkPage from './WatermarkPage.jsx';
-import PageNumbersPage from './PageNumbersPage.jsx';
-import ScanToPdfPage from './ScanToPdfPage.jsx';
-import TextToPdfPage from './TextToPdfPage.jsx';
-import PdfToDocumentPage from './PdfToDocumentPage.jsx';
-import CompressFilesPage from './CompressFilesPage.jsx';
-import CompressImagePage from './CompressImagePage.jsx';
-import GovernmentImageToolPage from './GovernmentImageToolPage.jsx';
-import ExtraPdfToolPage from './ExtraPdfToolPage.jsx';
 import { createDownloadName } from '../utils/downloadName.js';
 import ToolGuide from '../components/tools/ToolGuide.jsx';
 import UploadedFileList from '../components/pdf/UploadedFileList.jsx';
 import { useBrowserDraft } from '../lib/browserDraft.js';
 import { apiBaseUrl } from '../lib/authApi.js';
-import { readPdfText } from '../lib/pdfText.js';
+
+const PdfPagePreview = lazy(() => import('../components/pdf/PdfPagePreview.jsx'));
+const MergePdfPage = lazy(() => import('./MergePdfPage.jsx'));
+const RemovePagesPage = lazy(() => import('./RemovePagesPage.jsx'));
+const WatermarkPage = lazy(() => import('./WatermarkPage.jsx'));
+const PageNumbersPage = lazy(() => import('./PageNumbersPage.jsx'));
+const ScanToPdfPage = lazy(() => import('./ScanToPdfPage.jsx'));
+const TextToPdfPage = lazy(() => import('./TextToPdfPage.jsx'));
+const PdfToDocumentPage = lazy(() => import('./PdfToDocumentPage.jsx'));
+const CompressFilesPage = lazy(() => import('./CompressFilesPage.jsx'));
+const CompressImagePage = lazy(() => import('./CompressImagePage.jsx'));
+const GovernmentImageToolPage = lazy(() => import('./GovernmentImageToolPage.jsx'));
+const ExtraPdfToolPage = lazy(() => import('./ExtraPdfToolPage.jsx'));
 
 export default function ToolPage() {
   const { slug } = useParams();
@@ -67,7 +67,7 @@ function ToolPageContent({ tool }) {
   else if (tool.endpoint === 'government-image') customToolPage = <GovernmentImageToolPage tool={tool}/>;
   else if (['repair-pdf', 'crop-pdf', 'edit-pdf', 'flatten-pdf', 'extract-images', 'unlock-pdf', 'clean-metadata', 'sign-pdf', 'redact-pdf', 'pdf-forms', 'html-to-pdf', 'to-jpg', 'to-png', 'to-markdown', 'to-excel', 'pdf-to-powerpoint', 'pdf-to-pdfa', 'office-to-pdf', 'summarize', 'compare'].includes(tool.endpoint)) customToolPage = <ExtraPdfToolPage tool={tool}/>;
   else if (tool.merge) customToolPage = <MergePdfPage tool={tool}/>;
-  if (customToolPage) return <>{customToolPage}<ToolGuide tool={tool}/></>;
+  if (customToolPage) return <Suspense fallback={<main className="container py-5 tool-page"><p role="status">Opening {tool.name}…</p></main>}>{customToolPage}<ToolGuide tool={tool}/></Suspense>;
   if (!draftReady) return <main className="container py-5 tool-page"><p className="small text-secondary">Restoring your saved work…</p></main>;
   const togglePage = (page) => setSelected((current) => { const next = current.includes(page) ? current.filter((number) => number !== page) : [...current, page].sort((a,b) => a-b); setPages(next.join(',')); return next; });
   const submit = async () => {
@@ -92,6 +92,7 @@ function ToolPageContent({ tool }) {
     try {
       const response = await fetch(result);
       if (!response.ok) throw new Error('Could not open the completed PDF.');
+      const { readPdfText } = await import('../lib/pdfText.js');
       const state = await readPdfText(await response.blob(), createDownloadName(files[0], 'pdf'));
       navigate('/tools/text-to-document', { state });
     } catch (error) {
@@ -106,7 +107,7 @@ function ToolPageContent({ tool }) {
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
     <FileUploader tool={tool} onFiles={(newFiles) => { setFiles(tool.multiple ? newFiles : newFiles.slice(0, 1)); setSelected([]); setPages(''); setResult(null); }}/>
     {files.length > 0 && <UploadedFileList files={files}/>}
-    {tool.pages && files[0]?.type === 'application/pdf' && <PdfPagePreview file={files[0]} selectedPages={selected} onToggle={togglePage}/>}
+    {tool.pages && files[0]?.type === 'application/pdf' && <Suspense fallback={<p className="small text-secondary" role="status">Loading PDF page previews…</p>}><PdfPagePreview file={files[0]} selectedPages={selected} onToggle={togglePage}/></Suspense>}
     {tool.protect && <div className="row g-3 mt-1">
       <label className="col-md-6">PDF password<input className="form-control" type="password" autoComplete="new-password" minLength="8" maxLength="128" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters"/></label>
       <label className="col-md-6">Confirm password<input className="form-control" type="password" autoComplete="new-password" minLength="8" maxLength="128" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)}/></label>

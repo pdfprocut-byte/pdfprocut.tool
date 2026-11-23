@@ -4,27 +4,28 @@ import Navbar from './components/layout/Navbar.jsx';
 import Footer from './components/layout/Footer.jsx';
 import HomePage from './pages/HomePage.jsx';
 import ToolsPage from './pages/ToolsPage.jsx';
-import ToolPage from './pages/ToolPage.jsx';
-import AboutPage from './pages/AboutPage.jsx';
-import ContactPage from './pages/ContactPage.jsx';
-import GuidesPage from './pages/GuidesPage.jsx';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage.jsx';
-import TermsPage from './pages/TermsPage.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
-import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
-import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProfileProvider } from './context/ProfileContext.jsx';
-import AccountProfilePage from './pages/AccountProfilePage.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
 import { fetchWithCredentials, apiBaseUrl } from './lib/authApi.js';
 import { useAuth } from './context/AuthContext.jsx';
-import AssistantChat from './components/AssistantChat.jsx';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 
 const Placeholder = ({ title }) => <main className="container py-5"><h2>{title}</h2><p>The page you requested could not be found.</p></main>;
+const ToolPage = lazy(() => import('./pages/ToolPage.jsx'));
 const WordEditorPage = lazy(() => import('./pages/WordEditorPage.jsx'));
+const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
+const ContactPage = lazy(() => import('./pages/ContactPage.jsx'));
+const GuidesPage = lazy(() => import('./pages/GuidesPage.jsx'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
+const TermsPage = lazy(() => import('./pages/TermsPage.jsx'));
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage.jsx'));
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.jsx'));
+const AccountProfilePage = lazy(() => import('./pages/AccountProfilePage.jsx'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
+const AssistantChat = lazy(() => import('./components/AssistantChat.jsx'));
+const LazyPage = ({ component: Component }) => <Suspense fallback={<main className="container py-5"><p role="status">Loading page…</p></main>}><Component/></Suspense>;
 const homeSeo = {
   title: 'PDF Pro Cut | PDF, Image and Application Tools',
   description: 'Resize government application photos and signatures, compress documents, edit PDFs, and convert files online with PDF Pro Cut.'
@@ -146,23 +147,23 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage/>}/>
           <Route path="/tools" element={<ToolsPage/>}/>
-          <Route path="/tools/:slug" element={<ToolPage/>}/>
-          <Route path="/about" element={<AboutPage/>}/>
-          <Route path="/contact" element={<ContactPage/>}/>
-          <Route path="/guides" element={<GuidesPage/>}/>
-          <Route path="/privacy-policy" element={<PrivacyPolicyPage/>}/>
-          <Route path="/terms" element={<TermsPage/>}/>
-          <Route path="/login" element={<LoginPage/>}/>
-          <Route path="/register" element={<RegisterPage/>}/>
-          <Route path="/verify-email" element={<VerifyEmailPage/>}/>
-          <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
-          <Route path="/profile" element={<AccountProfilePage/>}/>
+          <Route path="/tools/:slug" element={<Suspense fallback={<main className="container py-5"><p role="status">Opening tool…</p></main>}><ToolPage/></Suspense>}/>
+          <Route path="/about" element={<LazyPage component={AboutPage}/>}/>
+          <Route path="/contact" element={<LazyPage component={ContactPage}/>}/>
+          <Route path="/guides" element={<LazyPage component={GuidesPage}/>}/>
+          <Route path="/privacy-policy" element={<LazyPage component={PrivacyPolicyPage}/>}/>
+          <Route path="/terms" element={<LazyPage component={TermsPage}/>}/>
+          <Route path="/login" element={<LazyPage component={LoginPage}/>}/>
+          <Route path="/register" element={<LazyPage component={RegisterPage}/>}/>
+          <Route path="/verify-email" element={<LazyPage component={VerifyEmailPage}/>}/>
+          <Route path="/forgot-password" element={<LazyPage component={ForgotPasswordPage}/>}/>
+          <Route path="/profile" element={<LazyPage component={AccountProfilePage}/>}/>
           <Route path="/word-editor" element={<Suspense fallback={<main className="container py-5">Opening the Word Editor…</main>}><WordEditorPage/></Suspense>}/>
-          <Route path="/admin" element={<AdminDashboard/>}/>
-          <Route path="/admin/login" element={<LoginPage/>}/>
+          <Route path="/admin" element={<LazyPage component={AdminDashboard}/>}/>
+          <Route path="/admin/login" element={<LazyPage component={LoginPage}/>}/>
           <Route path="*" element={<Placeholder title="Page not found"/>}/>
         </Routes>
-        {!isAdminPage && <AssistantChat/>}
+        {!isAdminPage && <Suspense fallback={null}><AssistantChat/></Suspense>}
         {!isAdminPage && <Footer/>}
       </div>
     </ProfileProvider>
