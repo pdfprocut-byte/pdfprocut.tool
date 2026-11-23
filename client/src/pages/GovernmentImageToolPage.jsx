@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { governmentImagePresets, governmentPresetByTool, socialProfilePresets } from '../../../shared/imagePresets.mjs';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
@@ -17,10 +18,10 @@ function formatPhotoDate(dateValue) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
 }
 
-async function addPhotoNameDateFooter(blob, name, dateValue) {
+async function addPhotoNameDateFooter(blob, name, dateValue, targetBytes = null) {
   const bitmap = await createImageBitmap(blob);
-  const footerHeight = Math.max(18, Math.round(bitmap.height * 0.16));
-  const outputHeight = bitmap.height + footerHeight;
+  const footerHeight = Math.max(20, Math.round(bitmap.height * 0.12));
+  const outputHeight = bitmap.height;
   if (bitmap.width * outputHeight > maxPixels) {
     bitmap.close();
     throw new Error('Adding the name and date would exceed the 30-megapixel output limit. Reduce the photo dimensions first.');
@@ -34,17 +35,33 @@ async function addPhotoNameDateFooter(blob, name, dateValue) {
     if (!context) throw new Error('Your browser could not prepare the name and date footer.');
     context.fillStyle = '#fff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height);
+    const imageAreaHeight = Math.max(1, outputHeight - footerHeight);
+    const imageScale = Math.min(canvas.width / bitmap.width, imageAreaHeight / bitmap.height);
+    const imageWidth = bitmap.width * imageScale;
+    const imageHeight = bitmap.height * imageScale;
+    context.drawImage(bitmap, (canvas.width - imageWidth) / 2, (imageAreaHeight - imageHeight) / 2, imageWidth, imageHeight);
     context.fillStyle = '#111';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    const fontSize = Math.max(7, Math.min(footerHeight * 0.44, bitmap.width * 0.085));
+    const fontSize = Math.max(6, Math.min(footerHeight * 0.34, bitmap.width * 0.07));
     context.font = `700 ${fontSize}px Arial, sans-serif`;
-    context.fillText(name.trim().toLocaleUpperCase(), bitmap.width / 2, bitmap.height + footerHeight * 0.32, Math.max(1, bitmap.width - 6));
+    context.fillText(name.trim().toLocaleUpperCase(), bitmap.width / 2, imageAreaHeight + footerHeight * 0.31, Math.max(1, bitmap.width - 6));
     context.font = `700 ${Math.max(7, fontSize * 0.9)}px Arial, sans-serif`;
-    context.fillText(formatPhotoDate(dateValue), bitmap.width / 2, bitmap.height + footerHeight * 0.76, Math.max(1, bitmap.width - 6));
-    const outputBlob = await canvasBlob(canvas, blob.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.94);
-    return { blob: outputBlob, width: bitmap.width, height: outputHeight };
+    context.fillText(formatPhotoDate(dateValue), bitmap.width / 2, imageAreaHeight + footerHeight * 0.75, Math.max(1, bitmap.width - 6));
+    const type = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
+    const qualities = targetBytes && type === 'image/jpeg' ? [0.94, 0.84, 0.74, 0.64, 0.54, 0.44, 0.34] : [0.92];
+    let outputBlob = null;
+    let targetMet = !targetBytes;
+    for (const quality of qualities) {
+      const candidate = await canvasBlob(canvas, type, quality);
+      if (!outputBlob || candidate.size < outputBlob.size) outputBlob = candidate;
+      if (!targetBytes || candidate.size <= targetBytes) {
+        outputBlob = candidate;
+        targetMet = true;
+        break;
+      }
+    }
+    return { blob: outputBlob, width: bitmap.width, height: outputHeight, targetMet };
   } finally {
     bitmap.close();
     canvas.width = 0;
@@ -203,6 +220,17 @@ async function prepareImage(file, options) {
     if (!Number.isInteger(requestedWidth) || !Number.isInteger(requestedHeight) || requestedWidth < 1 || requestedHeight < 1 || requestedWidth * requestedHeight > maxPixels) {
       throw new Error('Enter positive image dimensions with no more than 30 megapixels total.');
     }
+    if (options.fitMode === 'cover') {
+      const targetRatio = requestedWidth / requestedHeight;
+      const sourceRatio = crop.width / crop.height;
+      if (sourceRatio > targetRatio) {
+        const width = crop.height * targetRatio;
+        crop = { ...crop, x: crop.x + (crop.width - width) / 2, width };
+      } else if (sourceRatio < targetRatio) {
+        const height = crop.width / targetRatio;
+        crop = { ...crop, y: crop.y + (crop.height - height) / 2, height };
+      }
+    }
 
     const format = options.format === 'png' ? 'image/png' : 'image/jpeg';
     const canvas = document.createElement('canvas');
@@ -221,7 +249,14 @@ async function prepareImage(file, options) {
         if (options.whiteBackground || format === 'image/jpeg') {
           context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
         }
-        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+        if (options.fitMode === 'contain') {
+          const scale = Math.min(width / crop.width, height / crop.height);
+          const drawWidth = crop.width * scale;
+          const drawHeight = crop.height * scale;
+          context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+        } else {
+          context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+        }
         const qualitySteps = options.targetBytes && format === 'image/jpeg'
           ? scaleStep === 0 ? [0.94, 0.76, 0.56] : [Math.max(0.32, 0.56 - (scaleStep - 1) * 0.035)]
           : [0.92];
@@ -246,24 +281,66 @@ async function prepareImage(file, options) {
   }
 }
 
+function resolveGovernmentPreset(tool, slot) {
+  if (tool.gov?.kind === 'pair') {
+    return governmentImagePresets[slot === 'signature' ? 'keralaPscSignature' : 'keralaPscPhoto'];
+  }
+  const presetId = governmentPresetByTool[tool.slug];
+  if (presetId) return governmentImagePresets[presetId];
+  if (tool.gov?.subject === 'photo' || tool.gov?.subject === 'ID photo') return governmentImagePresets.genericPhoto;
+  if (tool.gov?.subject === 'signature') return governmentImagePresets.genericSignature;
+  return null;
+}
+
+function initialOutputDimensions(preset, originalWidth, originalHeight) {
+  let width = preset?.width;
+  let height = preset?.height;
+  if (!width || !height) {
+    width = originalWidth;
+    height = originalHeight;
+    if (preset?.minWidth && preset?.minHeight) {
+      const minScale = Math.max(preset.minWidth / originalWidth, preset.minHeight / originalHeight);
+      const maxScale = Math.min((preset.maxWidth || Infinity) / originalWidth, (preset.maxHeight || Infinity) / originalHeight);
+      if (minScale <= maxScale) {
+        width = Math.round(originalWidth * minScale);
+        height = Math.round(originalHeight * minScale);
+      }
+    }
+  }
+  return {
+    width: String(width),
+    height: String(height),
+    aspectRatio: width / height,
+    originalWidth,
+    originalHeight
+  };
+}
+
 export default function GovernmentImageToolPage({ tool }) {
   const config = tool.gov || {};
   const pair = config.kind === 'pair';
+  const socialProfileTool = config.kind === 'social-profile';
   const slots = pair
     ? [{ key: 'photo', label: 'Photo' }, { key: 'signature', label: 'Signature' }]
-    : [{ key: 'image', label: config.subject ? `${config.subject[0].toUpperCase()}${config.subject.slice(1)} image` : 'Image' }];
+    : [{ key: 'image', label: socialProfileTool ? 'Profile photo' : config.subject ? `${config.subject[0].toUpperCase()}${config.subject.slice(1)} image` : 'Image' }];
+  const hasNameDateOption = tool.slug === 'kerala-psc-photo-resizer' || tool.slug === 'psc-photo-signature-maker';
+  const [socialPresetId, setSocialPresetId] = useState(config.defaultPreset || 'instagram');
+  const selectedSocialPreset = socialProfilePresets.find((preset) => preset.id === socialPresetId) || socialProfilePresets[0];
+  const presetForSlot = (slot) => socialProfileTool ? selectedSocialPreset : resolveGovernmentPreset(tool, slot);
+  const initialPreset = presetForSlot(slots[0].key);
   const [files, setFiles] = useState({});
   const [previews, setPreviews] = useState({});
   const [dimensions, setDimensions] = useState({});
   const [maintainAspect, setMaintainAspect] = useState(true);
-  const [targetKb, setTargetKb] = useState('');
-  const [dpi, setDpi] = useState('300');
-  const [whiteBackground, setWhiteBackground] = useState(config.kind === 'white-background');
+  const [targetKb, setTargetKb] = useState(String(initialPreset?.defaultTargetKb ?? initialPreset?.maxKb ?? ''));
+  const [dpi, setDpi] = useState(String(initialPreset?.dpi || '300'));
+  const [whiteBackground, setWhiteBackground] = useState(initialPreset?.whiteBackground ?? config.kind === 'white-background');
+  const [fitMode, setFitMode] = useState(socialProfileTool ? 'cover' : initialPreset?.fitMode || 'contain');
   const [trim, setTrim] = useState(Boolean(config.crop));
   const [backgroundThreshold, setBackgroundThreshold] = useState('238');
   const [backgroundTolerance, setBackgroundTolerance] = useState('48');
-  const [format, setFormat] = useState(config.kind === 'remove-background' ? 'png' : 'jpeg');
-  const [addNameDate, setAddNameDate] = useState(false);
+  const [format, setFormat] = useState(initialPreset?.format || (config.kind === 'remove-background' ? 'png' : 'jpeg'));
+  const [addNameDate, setAddNameDate] = useState(hasNameDateOption);
   const [photoName, setPhotoName] = useState('');
   const [photoDate, setPhotoDate] = useState(getLocalDateValue);
   const [busy, setBusy] = useState(false);
@@ -277,7 +354,8 @@ export default function GovernmentImageToolPage({ tool }) {
   const compression = config.kind === 'compress';
   const dpiMode = config.kind === 'dpi';
   const hasCamera = config.kind === 'live-photo';
-  const hasNameDateOption = tool.slug === 'kerala-psc-photo-resizer';
+  const currentPreset = presetForSlot(slots[0].key);
+  const showSizeTarget = compression || Boolean(currentPreset?.maxKb);
 
   const makeObjectUrl = (blob) => {
     const url = URL.createObjectURL(blob);
@@ -306,7 +384,9 @@ export default function GovernmentImageToolPage({ tool }) {
     });
     if (dpiMode) setFormat(file.type === 'image/png' ? 'png' : 'jpeg');
     createImageBitmap(file).then((bitmap) => {
-      setDimensions((current) => ({ ...current, [slot]: { width: '', height: '', originalWidth: bitmap.width, originalHeight: bitmap.height } }));
+      const preset = presetForSlot(slot);
+      const outputDimensions = initialOutputDimensions(preset, bitmap.width, bitmap.height);
+      setDimensions((current) => ({ ...current, [slot]: outputDimensions }));
       bitmap.close();
     }).catch(() => toast.error('This image could not be opened.'));
   };
@@ -314,12 +394,33 @@ export default function GovernmentImageToolPage({ tool }) {
     setDimensions((current) => {
       const prior = current[slot] || { width: '', height: '' };
       const next = { ...prior, [axis]: value };
-      if (!maintainAspect || !value || !prior.originalWidth || !prior.originalHeight) return { ...current, [slot]: next };
+      if (!value) return { ...current, [slot]: next };
+      if (!maintainAspect) {
+        const width = Number(next.width); const height = Number(next.height);
+        if (Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0) next.aspectRatio = width / height;
+        return { ...current, [slot]: next };
+      }
+      if (!prior.aspectRatio) return { ...current, [slot]: next };
       const numeric = Number(value);
       if (!Number.isInteger(numeric) || numeric < 1) return { ...current, [slot]: next };
-      if (axis === 'width') next.height = String(Math.max(1, Math.round(numeric * prior.originalHeight / prior.originalWidth)));
-      else next.width = String(Math.max(1, Math.round(numeric * prior.originalWidth / prior.originalHeight)));
+      if (axis === 'width') next.height = String(Math.max(1, Math.round(numeric / prior.aspectRatio)));
+      else next.width = String(Math.max(1, Math.round(numeric * prior.aspectRatio)));
       return { ...current, [slot]: next };
+    });
+  };
+
+  const changeSocialPreset = (presetId) => {
+    const preset = socialProfilePresets.find((item) => item.id === presetId);
+    if (!preset) return;
+    clearResults();
+    setSocialPresetId(presetId);
+    setTargetKb(String(preset.defaultTargetKb ?? preset.maxKb ?? ''));
+    setFormat('jpeg');
+    setFitMode('cover');
+    setDimensions((current) => {
+      const image = current.image;
+      if (!image?.originalWidth || !image?.originalHeight) return current;
+      return { ...current, image: { ...image, width: String(preset.width), height: String(preset.height), aspectRatio: preset.width / preset.height } };
     });
   };
 
@@ -365,7 +466,13 @@ export default function GovernmentImageToolPage({ tool }) {
     if (slots.some(({ key }) => !files[key])) return toast.error(pair ? 'Choose both a photo and a signature.' : 'Choose a JPG or PNG image first.');
     if (hasNameDateOption && addNameDate && (!photoName.trim() || !photoDate)) return toast.error('Enter both the name and date to add them below the photo.');
     const requestedKb = Number(targetKb);
-    if (compression && (!Number.isFinite(requestedKb) || requestedKb < 1 || requestedKb > 10240)) return toast.error('Enter a target between 1 KB and 10,240 KB.');
+    const activePreset = presetForSlot(slots[0].key);
+    const hasSizeTarget = compression || Boolean(activePreset?.maxKb);
+    const maxTargetKb = activePreset?.maxKb || 15360;
+    if (hasSizeTarget && targetKb && (!Number.isFinite(requestedKb) || requestedKb < (activePreset?.minKb || 1) || requestedKb > maxTargetKb)) {
+      return toast.error(`Enter a file-size target between ${activePreset?.minKb || 1} KB and ${maxTargetKb} KB.`);
+    }
+    if (hasSizeTarget && !targetKb) return toast.error('Enter a file-size target from the current application requirements.');
     if (dpiMode && (!Number.isInteger(Number(dpi)) || Number(dpi) < 1 || Number(dpi) > 12000)) return toast.error('Enter a DPI value between 1 and 12,000.');
     clearResults();
     setBusy(true);
@@ -373,9 +480,19 @@ export default function GovernmentImageToolPage({ tool }) {
       const nextResults = [];
       for (const slot of slots) {
         const selectedDimensions = dimensions[slot.key] || {};
+        const slotPreset = presetForSlot(slot.key);
+        const outputWidth = Number(selectedDimensions.width);
+        const outputHeight = Number(selectedDimensions.height);
+        if (slotPreset?.minWidth && (outputWidth < slotPreset.minWidth || outputHeight < slotPreset.minHeight)) {
+          throw new Error(`This preset needs at least ${slotPreset.minWidth} × ${slotPreset.minHeight} px. Check the current notice before using smaller custom dimensions.`);
+        }
+        if (slotPreset?.maxWidth && (outputWidth > slotPreset.maxWidth || outputHeight > slotPreset.maxHeight)) {
+          throw new Error(`This preset allows at most ${slotPreset.maxWidth} × ${slotPreset.maxHeight} px. Check the current notice before using larger custom dimensions.`);
+        }
         let output = await prepareImage(files[slot.key], {
           width: selectedDimensions.width,
           height: selectedDimensions.height,
+          fitMode: slotPreset?.fitMode || fitMode,
           whiteBackground,
           trim: trim && (pair ? slot.key === 'signature' : true),
           removeBackground,
@@ -383,11 +500,11 @@ export default function GovernmentImageToolPage({ tool }) {
           backgroundThreshold,
           backgroundTolerance,
           format: removeBackground ? 'png' : format,
-          dpi: dpiMode ? Number(dpi) : null,
-          targetBytes: compression ? Math.round(requestedKb * 1024) : null
+          dpi: slotPreset?.dpi || (dpiMode ? Number(dpi) : null),
+          targetBytes: hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null
         });
-        if (hasNameDateOption && addNameDate) {
-          const labeledOutput = await addPhotoNameDateFooter(output.blob, photoName, photoDate);
+        if (hasNameDateOption && addNameDate && (!pair || slot.key === 'photo')) {
+          const labeledOutput = await addPhotoNameDateFooter(output.blob, photoName, photoDate, showSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null);
           output = { ...output, ...labeledOutput };
         }
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
@@ -400,11 +517,12 @@ export default function GovernmentImageToolPage({ tool }) {
           width: output.width,
           height: output.height,
           originalSize: files[slot.key].size,
-          targetMet: output.targetMet
+          targetMet: output.targetMet,
+          minimumSizeMet: !slotPreset?.minKb || output.blob.size >= slotPreset.minKb * 1024
         });
       }
       setResults(nextResults);
-      toast.success(pair ? 'Photo and signature are ready.' : 'Your image is ready to download.');
+      toast.success(pair ? 'Photo and signature are ready.' : socialProfileTool ? `${selectedSocialPreset.label} profile photo is ready.` : 'Your image is ready to download.');
     } catch (error) {
       toast.error(error.message || 'Could not prepare this image.');
     } finally {
@@ -416,8 +534,22 @@ export default function GovernmentImageToolPage({ tool }) {
     <Link to="/tools" className="back">← All tools</Link>
     <h1>{tool.name}</h1>
     <p className="lead">{tool.description}</p>
-    <p className="government-tool-local-note" role="note">Image processing happens in this browser. Your image is not uploaded by this tool. Use the dimensions and file-size limits in the current application notice; the suggested settings are not official requirements.</p>
+    <div className="government-tool-local-note" role="note">
+      <p>{socialProfileTool
+        ? `${selectedSocialPreset.guidance} Profile photos are commonly shown as circles; check the preview after cropping.`
+        : currentPreset?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
+      {currentPreset?.sourceUrl && <a href={currentPreset.sourceUrl} target="_blank" rel="noreferrer">{socialProfileTool ? `${selectedSocialPreset.label} help and image guidance` : currentPreset.sourceLabel || 'Official size guidance'} ↗</a>}
+      <p className="government-tool-privacy-note">Your image stays in this browser. Presets can be changed to match a different application or notice.</p>
+    </div>
     {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
+
+    {socialProfileTool && <section className="government-tool-settings social-profile-settings" aria-labelledby="social-profile-preset-title">
+      <h2 id="social-profile-preset-title">Profile photo size</h2>
+      <label className="government-inline-field">Social platform<select className="form-select" value={socialPresetId} onChange={(event) => changeSocialPreset(event.target.value)}>
+        {socialProfilePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} — {preset.width} × {preset.height} px</option>)}
+      </select></label>
+      <p className="small text-secondary mb-0">{selectedSocialPreset.shape} · {selectedSocialPreset.width} × {selectedSocialPreset.height} px · 1:1 aspect ratio</p>
+    </section>}
 
     <div className="government-tool-inputs">
       {slots.map((slot) => {
@@ -427,11 +559,11 @@ export default function GovernmentImageToolPage({ tool }) {
           <label className="government-file-label">Select {slot.label.toLowerCase()} (JPG or PNG)
             <input type="file" accept="image/jpeg,image/png" onChange={(event) => selectFile(slot.key, event.target.files?.[0])}/>
           </label>
-          {previews[slot.key] && <figure className="government-image-preview">
-            {hasNameDateOption && addNameDate ? <div className="government-photo-name-date-preview">
+          {previews[slot.key] && <figure className={`government-image-preview${socialProfileTool ? ' social-profile-preview-frame' : ''}`}>
+            {hasNameDateOption && addNameDate && (!pair || slot.key === 'photo') ? <div className="government-photo-name-date-preview">
               <img src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>
               <div className="government-photo-name-date-strip"><strong>{photoName.trim().toLocaleUpperCase() || 'YOUR NAME'}</strong><span>{formatPhotoDate(photoDate) || 'DD/MM/YYYY'}</span></div>
-            </div> : <img src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>}
+            </div> : <img className={socialProfileTool ? 'social-profile-preview-image' : undefined} src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>}
             <figcaption>{files[slot.key]?.name} · {size?.originalWidth} × {size?.originalHeight} px</figcaption>
           </figure>}
           {size && <fieldset className="government-dimensions">
@@ -440,7 +572,7 @@ export default function GovernmentImageToolPage({ tool }) {
               <label>Width (px)<input className="form-control" type="number" min="1" max="30000" value={size.width} placeholder={String(size.originalWidth || 'Original')} onChange={(event) => updateDimension(slot.key, 'width', event.target.value)}/></label>
               <label>Height (px)<input className="form-control" type="number" min="1" max="30000" value={size.height} placeholder={String(size.originalHeight || 'Original')} onChange={(event) => updateDimension(slot.key, 'height', event.target.value)}/></label>
             </div>
-            <small>Leave both blank to keep the source dimensions. Maximum output: 30 megapixels.</small>
+            <small>{size.width && size.height ? `${size.width} × ${size.height} px is loaded from the selected preset. Edit either value to customize it.` : 'The source dimensions are kept until you enter a custom size.'} Maximum output: 30 megapixels.</small>
           </fieldset>}
         </section>;
       })}
@@ -458,13 +590,14 @@ export default function GovernmentImageToolPage({ tool }) {
 
     <section className="government-tool-settings" aria-labelledby="government-settings-title">
       <h2 id="government-settings-title">Image settings</h2>
-      {!dpiMode && <label className="government-setting-check"><input type="checkbox" checked={maintainAspect} onChange={(event) => setMaintainAspect(event.target.checked)}/> Keep the original aspect ratio when changing dimensions</label>}
+      {!dpiMode && <label className="government-setting-check"><input type="checkbox" checked={maintainAspect} onChange={(event) => setMaintainAspect(event.target.checked)}/> Keep the selected aspect ratio when changing dimensions</label>}
+      <label className="government-inline-field">Frame handling<select className="form-select" value={fitMode} onChange={(event) => setFitMode(event.target.value)}><option value="cover">Crop to fill the frame</option><option value="contain">Fit the whole image inside the frame</option></select><small>Crop to fill trims edges to match the selected ratio. Fit keeps the full image and may add white space.</small></label>
       {hasNameDateOption && <>
-        <label className="government-setting-check"><input type="checkbox" checked={addNameDate} onChange={(event) => { clearResults(); setAddNameDate(event.target.checked); }}/> Add name and date below the photo</label>
+        <label className="government-setting-check"><input type="checkbox" checked={addNameDate} onChange={(event) => { clearResults(); setAddNameDate(event.target.checked); }}/> Print name and date inside the photo frame</label>
         {addNameDate && <div className="government-name-date-fields">
           <label className="government-inline-field">Name<input className="form-control" type="text" maxLength="40" autoComplete="name" placeholder="Enter the applicant name" value={photoName} onChange={(event) => { clearResults(); setPhotoName(event.target.value); }}/></label>
           <label className="government-inline-field">Date<input className="form-control" type="date" value={photoDate} onChange={(event) => { clearResults(); setPhotoDate(event.target.value); }}/></label>
-          <p className="small text-secondary">The footer is added below the resized photo. The date is printed as DD/MM/YYYY; check the current application notice for its required format.</p>
+          <p className="small text-secondary">The name and date are fitted into the bottom band, so the output keeps the preset dimensions. The date is printed as DD/MM/YYYY.</p>
         </div>}
       </>}
       {config.kind !== 'white-background' && !removeBackground && <label className="government-setting-check"><input type="checkbox" checked={whiteBackground} onChange={(event) => setWhiteBackground(event.target.checked)}/> Place transparent areas on a white background</label>}
@@ -473,19 +606,19 @@ export default function GovernmentImageToolPage({ tool }) {
         <label className="government-inline-field">Background color tolerance: {backgroundTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={backgroundTolerance} onChange={(event) => setBackgroundTolerance(event.target.value)}/></label>
       </>}
       {(config.crop || pair) && <label className="government-setting-check"><input type="checkbox" checked={trim} onChange={(event) => setTrim(event.target.checked)}/> Trim blank borders around the signature</label>}
-      {compression && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" min="1" max="10240" step="1" placeholder="Enter the limit from your notice" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>Compression tries several image qualities and dimensions to reach this maximum. Check the result; very small limits may not be achievable.</small></label>}
+      {showSizeTarget && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter a maximum file size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}Compression targets this maximum; check the downloaded size because very small limits may not be achievable.</small></label>}
       {dpiMode && <label className="government-inline-field">Resolution metadata (DPI)<input className="form-control" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/><small>DPI changes print-size metadata; it does not add detail or increase the pixel dimensions.</small></label>}
       {removeBackground && <label className="government-inline-field">White-background removal threshold: {backgroundThreshold}<input className="form-range" type="range" min="205" max="252" step="1" value={backgroundThreshold} onChange={(event) => setBackgroundThreshold(event.target.value)}/><small>Works best with a plain, near-white background. Inspect fine signature strokes before using the PNG.</small></label>}
-      {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select></label>}
+      {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialProfileTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
     </section>
 
     <button className="btn btn-primary mt-4" type="button" onClick={process} disabled={busy || slots.some(({ key }) => !files[key])}>{busy ? 'Preparing image…' : pair ? 'Prepare photo and signature' : tool.name}</button>
     {results.length > 0 && <section className="government-results" aria-labelledby="government-results-title" aria-live="polite">
       <h2 id="government-results-title">Preview and download</h2>
       <div className="government-results-grid">{results.map((result) => <article className="government-result-card" key={result.name}>
-        <img src={result.url} alt={`Processed ${result.name} preview`}/>
+        <img className={socialProfileTool ? 'social-profile-result-image' : undefined} src={result.url} alt={`Processed ${result.name} preview`}/>
         <p>{result.width} × {result.height} px · {(result.blob.size / 1024).toFixed(1)} KB</p>
-        {compression && <p className={result.targetMet ? 'text-success' : 'text-warning'}>{result.targetMet ? 'Target size reached.' : 'Target size not reached; best available result shown.'}</p>}
+        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? 'Maximum size target not reached; best available result shown.' : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : 'File-size target reached.'}</p>}
         <a className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</a>
       </article>)}</div>
     </section>}

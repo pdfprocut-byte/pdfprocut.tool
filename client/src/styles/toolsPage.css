@@ -42,6 +42,7 @@
   background: linear-gradient(120deg, #faf7ff, #f4fbff);
 }
 .government-tools-overview h2 { margin: .3rem 0 .45rem; color: #2f2850; font-size: 1.12rem; font-weight: 760; }
+.government-tools-overview h3 { margin: .3rem 0 .45rem; color: #2f2850; font-size: 1.12rem; font-weight: 760; }
 .government-tools-overview p { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.6; }
 .government-tools-overview ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem 1rem; margin: 0; padding-left: 1.1rem; color: #51486a; font-size: .77rem; line-height: 1.5; }
 
@@ -151,6 +152,15 @@
   color: var(--tool-accent, var(--brand-hover));
   box-shadow: 0 2px 0 color-mix(in srgb, var(--tool-accent, var(--brand)), #fff 74%);
 }
+
+.tools-section-filters button { gap: .55rem; min-height: 2.55rem; padding: .5rem .85rem; color: #493c66; font-size: .8rem; }
+.tools-section-filters button > span.tools-section-count { display: grid; width: 1.35rem; height: 1.35rem; place-items: center; border-radius: 50%; background: #fff; color: var(--tool-accent, var(--brand)); font-size: .68rem; font-weight: 800; }
+.tools-section-heading { margin: 1.25rem 0 1rem; }
+.tools-section-heading h2 { margin: .25rem 0 .35rem; color: #27243a; font-size: clamp(1.35rem, 2.2vw, 1.8rem); font-weight: 790; letter-spacing: -.025em; }
+.tools-section-heading p { max-width: 48rem; margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.6; }
+.tools-directory-content .government-tools-overview { margin: 0 0 1.2rem; padding: 1rem 1.15rem; }
+.tools-directory-content .government-tools-overview h3 { font-size: 1rem; }
+.tools-directory-content .government-tools-overview ul { font-size: .75rem; }
 
 .tools-result-count { margin: .85rem 0 0; color: var(--muted); font-size: .75rem; font-weight: 660; }
 .tools-directory .tool-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }

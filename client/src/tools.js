@@ -1,4 +1,4 @@
-import { FaObjectGroup,FaCut,FaTrash,FaUndo,FaStamp,FaListOl,FaFileImage,FaFilePdf,FaFileAlt,FaFileWord,FaFileExcel,FaFilePowerpoint,FaCompress,FaLock } from 'react-icons/fa';
+import { FaObjectGroup,FaCut,FaTrash,FaUndo,FaStamp,FaListOl,FaFileImage,FaFilePdf,FaFileAlt,FaFileWord,FaFileExcel,FaFilePowerpoint,FaCompress,FaLock,FaUserCircle } from 'react-icons/fa';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 
 export function getToolCategoryClass(category) {
@@ -26,10 +26,12 @@ const iconBySlug = {
   'powerpoint-to-pdf': FaFilePowerpoint, 'excel-to-pdf': FaFileExcel, 'scan-to-pdf': FaFileImage,
   'convert-to-pdf': FaFileImage, 'text-to-pdf': FaFileAlt, 'text-to-document': FaFileAlt,
   'pdf-to-document': FaFileWord, 'protect-pdf': FaLock, 'ocr-pdf': FaFilePdf,
-  'compress-files': FaCompress, 'compress-image': FaFileImage
+  'compress-files': FaCompress, 'compress-image': FaFileImage,
+  'social-media-profile-resizer': FaUserCircle
 };
 
 export const tools = toolCatalog.map((tool) => ({
   ...tool,
+  section: tool.section || (tool.gov ? 'Government Services' : 'Documents'),
   icon: iconBySlug[tool.slug] || (tool.gov?.kind === 'pdf-compress' ? FaCompress : FaFileImage)
 }));

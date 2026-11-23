@@ -1,4 +1,4 @@
-export const toolCatalog = [
+const catalog = [
   { slug: 'merge-pdf', name: 'Merge PDF', description: 'Combine PDFs in your chosen order.', category: 'Organize PDF', multiple: true, endpoint: 'merge', accept: 'application/pdf', merge: true },
   { slug: 'organize-pdf', name: 'Organize PDF', description: 'Reorder, rotate, and remove PDF pages in one document.', category: 'Organize PDF', multiple: true, endpoint: 'merge', accept: 'application/pdf', merge: true, organize: true },
   { slug: 'split-pdf', name: 'Split PDF', description: 'Extract a page range into a new PDF.', category: 'Organize PDF', endpoint: 'split', accept: 'application/pdf', pages: true },
@@ -39,6 +39,7 @@ export const toolCatalog = [
   { slug: 'ocr-pdf', name: 'OCR PDF', description: 'Read text from scanned PDFs and images in multiple languages.', category: 'Optimize PDF', endpoint: 'ocr-pdf', accept: 'application/pdf,image/png,image/jpeg', multiple: false, ocr: true },
   { slug: 'compress-files', name: 'Compress PDF & Office', description: 'Reduce PDF, Word, Excel, and PowerPoint files toward a target size.', category: 'Compress', endpoint: 'compress', accept: '.pdf,.docx,.docm,.dotx,.dotm,.xlsx,.xlsm,.xltx,.xltm,.pptx,.pptm,.ppsx,.ppsm,.potx,.potm', multiple: false },
   { slug: 'compress-image', name: 'Compress Image', description: 'Reduce JPG or PNG image size with a selectable clarity setting.', category: 'Compress', endpoint: 'compress-image', accept: 'image/jpeg,image/png', multiple: false },
+  { slug: 'social-media-profile-resizer', name: 'Social Media Profile Photo Resizer', description: 'Resize and crop a profile photo for Instagram, Facebook, WhatsApp, X, LinkedIn, TikTok, YouTube, or Telegram.', category: 'Social Media', section: 'Social Media', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'social-profile', subject: 'profile photo', defaultPreset: 'instagram' } },
   { slug: 'kerala-psc-photo-resizer', name: 'Kerala PSC Photo Resizer', description: 'Resize a photo for a Kerala PSC application using the dimensions in its current notification.', category: 'Kerala PSC Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'resize', subject: 'photo' } },
   { slug: 'kerala-psc-signature-resizer', name: 'Kerala PSC Signature Resizer', description: 'Resize and optionally crop a signature image for a Kerala PSC application.', category: 'Kerala PSC Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'resize', subject: 'signature', crop: true } },
   { slug: 'psc-photo-kb-compressor', name: 'PSC Photo KB Compressor', description: 'Resize and compress a PSC application photo toward a chosen KB limit.', category: 'Kerala PSC Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'compress', subject: 'photo' } },
@@ -76,3 +77,8 @@ export const toolCatalog = [
   { slug: 'document-dpi-changer', name: 'Document DPI Changer', description: 'Set resolution metadata on a JPG or PNG scan without changing its pixel dimensions.', category: 'Common Government Document Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'dpi', subject: 'document scan' } },
   { slug: 'signature-background-remover', name: 'Signature Background Remover', description: 'Remove near-white pixels from a signature image and download a transparent PNG.', category: 'Common Government Document Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'remove-background', subject: 'signature' } }
 ];
+
+export const toolCatalog = catalog.map((tool) => ({
+  ...tool,
+  section: tool.section || (tool.gov ? 'Government Services' : 'Documents')
+}));

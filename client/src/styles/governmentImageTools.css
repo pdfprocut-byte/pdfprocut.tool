@@ -1,6 +1,10 @@
 .government-image-tool { max-width: 1040px; }
 .government-image-tool h1 { margin: .4rem 0 .55rem; color: #243149; font-size: clamp(1.7rem, 4vw, 2.35rem); font-weight: 780; letter-spacing: -.04em; }
 .government-tool-local-note { padding: .95rem 1rem; border: 1px solid #d7e5fc; border-radius: .8rem; background: #f5f9ff; color: #36506e; font-size: .88rem; line-height: 1.6; }
+.government-tool-local-note p { margin: 0; }
+.government-tool-local-note > p + a,.government-tool-local-note > a + p { display: block; margin-top: .45rem; }
+.government-tool-local-note a { color: #43319a; font-size: .82rem; font-weight: 700; }
+.government-tool-local-note .government-tool-privacy-note { margin-top: .45rem; color: #667085; font-size: .78rem; }
 .government-tool-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1rem; margin-top: 1.4rem; }
 .government-tool-slot,.government-tool-settings,.government-camera,.government-results { min-width: 0; margin-top: 1rem; padding: 1.2rem; border: 1px solid #e6eaf0; border-radius: 1rem; background: #fff; box-shadow: 0 6px 18px #18233b08; }
 .government-tool-slot h2,.government-tool-settings h2,.government-camera h2,.government-results h2 { margin: 0 0 .9rem; color: #2e3a50; font-size: 1.08rem; font-weight: 750; }
@@ -8,9 +12,12 @@
 .government-file-label input { width: 100%; padding: .7rem; border: 1px dashed #b8c4d7; border-radius: .65rem; background: #f8fafc; font-size: .85rem; }
 .government-image-preview { display: grid; justify-items: center; gap: .45rem; margin: 1rem 0 0; padding: .75rem; border-radius: .75rem; background: repeating-conic-gradient(#f0f2f6 0% 25%, #fff 0% 50%) 50% / 18px 18px; }
 .government-image-preview img { display: block; max-width: 100%; max-height: 320px; object-fit: contain; }
-.government-photo-name-date-preview { display: grid; width: fit-content; max-width: 100%; justify-items: stretch; background: #fff; }
+.social-profile-preview-frame { justify-items: center; }
+.social-profile-preview-frame .social-profile-preview-image { width: 180px; height: 180px; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #d0d5dd, 0 8px 20px #1018281c; object-fit: cover; }
+.social-profile-settings { margin-top: 1rem; }
+.government-photo-name-date-preview { position: relative; display: grid; width: fit-content; max-width: 100%; justify-items: stretch; background: #fff; }
 .government-photo-name-date-preview img { width: auto; max-width: 100%; }
-.government-photo-name-date-strip { display: grid; min-height: 1.75rem; align-content: center; justify-items: center; gap: .05rem; padding: .1rem .2rem; color: #111; font-family: Arial, sans-serif; line-height: 1.05; text-align: center; overflow-wrap: anywhere; }
+.government-photo-name-date-strip { position: absolute; right: 0; bottom: 0; left: 0; display: grid; min-height: 12%; align-content: center; justify-items: center; gap: .02rem; padding: .05rem .2rem; background: #ffffffed; color: #111; font-family: Arial, sans-serif; line-height: 1.02; text-align: center; overflow-wrap: anywhere; }
 .government-photo-name-date-strip strong { max-width: 100%; font-size: clamp(.65rem, 2.5vw, .86rem); font-weight: 750; }
 .government-photo-name-date-strip span { font-size: clamp(.6rem, 2.3vw, .8rem); font-weight: 700; }
 .government-name-date-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: .25rem .8rem; max-width: 34rem; }
@@ -29,6 +36,7 @@
 .government-results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
 .government-result-card { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: .4rem; padding: .85rem; border: 1px solid #eaecf0; border-radius: .8rem; }
 .government-result-card img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: repeating-conic-gradient(#f0f2f6 0% 25%, #fff 0% 50%) 50% / 18px 18px; }
+.government-result-card img.social-profile-result-image { width: 180px; height: 180px; align-self: center; border-radius: 50%; object-fit: cover; }
 .government-result-card p { margin: .25rem 0; color: #667085; font-size: .78rem; }
 .government-result-card .btn { margin-top: auto; }
 .government-tool-reminder { margin-top: 1rem; color: #667085; font-size: .8rem; line-height: 1.6; }
