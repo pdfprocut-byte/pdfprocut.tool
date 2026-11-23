@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { FaChevronDown, FaRegUser } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getToolCategoryClass, tools } from '../../tools.js';
+import { getToolCategoryClass, getToolCategoryLabel, tools } from '../../tools.js';
 import BrandLogo from './BrandLogo.jsx';
 import '../../styles/navbar.css';
 
@@ -85,7 +85,7 @@ export default function Navbar() {
             <div id="pdfpro-tools-dropdown" className={`pdfpro-tools-dropdown${toolsOpen ? ' is-open' : ''}`}>
               <div className="pdfpro-tools-dropdown-inner container">
                 {toolGroups.map(([category, categoryTools]) => <section className={`pdfpro-tools-category ${getToolCategoryClass(category)}`} key={category} aria-label={category}>
-                  <h2>{category}</h2>
+                  <h2>{getToolCategoryLabel(category)}</h2>
                   {categoryTools.map((tool) => <Link className="pdfpro-tool-option" key={tool.slug} to={`/tools/${tool.slug}`} onClick={closeMenus}>
                     <span className="pdfpro-tool-icon"><tool.icon aria-hidden="true"/></span><span>{tool.name}</span>
                   </Link>)}

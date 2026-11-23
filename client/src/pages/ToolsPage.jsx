@@ -4,7 +4,7 @@ import { FaArrowRight, FaSearch, FaTimes } from 'react-icons/fa';
 import ToolGrid from '../components/tools/ToolGrid.jsx';
 import { useProfile } from '../context/ProfileContext.jsx';
 import { useScrollReveal } from '../lib/useScrollReveal.js';
-import { getToolCategoryClass, tools } from '../tools.js';
+import { getToolCategoryClass, getToolCategoryLabel, tools } from '../tools.js';
 import '../styles/toolsPage.css';
 
 const categories = [...new Set(tools.map((tool) => tool.category))];
@@ -71,7 +71,7 @@ export default function ToolsPage() {
         <div className="tools-category-filters" role="group" aria-label="Filter tools by category">
           <button type="button" aria-pressed={!activeCategory} onClick={() => setActiveCategory('')}>All tools</button>
           {categories.map((category) => <button type="button" key={category} className={getToolCategoryClass(category)} aria-pressed={activeCategory === category} onClick={() => setActiveCategory(category)}>
-            <span aria-hidden="true"/>{category}
+            <span aria-hidden="true"/>{getToolCategoryLabel(category)}
           </button>)}
         </div>
         <p className="tools-result-count" role="status">{visibleTools.length} {visibleTools.length === 1 ? 'tool' : 'tools'}</p>

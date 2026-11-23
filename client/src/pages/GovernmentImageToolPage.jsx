@@ -7,6 +7,51 @@ const maxPixels = 30_000_000;
 const maxPixelEditingPixels = 12_000_000;
 const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+function getLocalDateValue() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function formatPhotoDate(dateValue) {
+  const match = dateValue?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
+}
+
+async function addPhotoNameDateFooter(blob, name, dateValue) {
+  const bitmap = await createImageBitmap(blob);
+  const footerHeight = Math.max(18, Math.round(bitmap.height * 0.16));
+  const outputHeight = bitmap.height + footerHeight;
+  if (bitmap.width * outputHeight > maxPixels) {
+    bitmap.close();
+    throw new Error('Adding the name and date would exceed the 30-megapixel output limit. Reduce the photo dimensions first.');
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = outputHeight;
+  try {
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Your browser could not prepare the name and date footer.');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height);
+    context.fillStyle = '#111';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    const fontSize = Math.max(7, Math.min(footerHeight * 0.44, bitmap.width * 0.085));
+    context.font = `700 ${fontSize}px Arial, sans-serif`;
+    context.fillText(name.trim().toLocaleUpperCase(), bitmap.width / 2, bitmap.height + footerHeight * 0.32, Math.max(1, bitmap.width - 6));
+    context.font = `700 ${Math.max(7, fontSize * 0.9)}px Arial, sans-serif`;
+    context.fillText(formatPhotoDate(dateValue), bitmap.width / 2, bitmap.height + footerHeight * 0.76, Math.max(1, bitmap.width - 6));
+    const outputBlob = await canvasBlob(canvas, blob.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.94);
+    return { blob: outputBlob, width: bitmap.width, height: outputHeight };
+  } finally {
+    bitmap.close();
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+}
+
 function canvasBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Your browser could not create this image.')), type, quality);
@@ -218,6 +263,9 @@ export default function GovernmentImageToolPage({ tool }) {
   const [backgroundThreshold, setBackgroundThreshold] = useState('238');
   const [backgroundTolerance, setBackgroundTolerance] = useState('48');
   const [format, setFormat] = useState(config.kind === 'remove-background' ? 'png' : 'jpeg');
+  const [addNameDate, setAddNameDate] = useState(false);
+  const [photoName, setPhotoName] = useState('');
+  const [photoDate, setPhotoDate] = useState(getLocalDateValue);
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState([]);
   const [cameraStream, setCameraStream] = useState(null);
@@ -229,6 +277,7 @@ export default function GovernmentImageToolPage({ tool }) {
   const compression = config.kind === 'compress';
   const dpiMode = config.kind === 'dpi';
   const hasCamera = config.kind === 'live-photo';
+  const hasNameDateOption = tool.slug === 'kerala-psc-photo-resizer';
 
   const makeObjectUrl = (blob) => {
     const url = URL.createObjectURL(blob);
@@ -314,6 +363,7 @@ export default function GovernmentImageToolPage({ tool }) {
 
   const process = async () => {
     if (slots.some(({ key }) => !files[key])) return toast.error(pair ? 'Choose both a photo and a signature.' : 'Choose a JPG or PNG image first.');
+    if (hasNameDateOption && addNameDate && (!photoName.trim() || !photoDate)) return toast.error('Enter both the name and date to add them below the photo.');
     const requestedKb = Number(targetKb);
     if (compression && (!Number.isFinite(requestedKb) || requestedKb < 1 || requestedKb > 10240)) return toast.error('Enter a target between 1 KB and 10,240 KB.');
     if (dpiMode && (!Number.isInteger(Number(dpi)) || Number(dpi) < 1 || Number(dpi) > 12000)) return toast.error('Enter a DPI value between 1 and 12,000.');
@@ -323,7 +373,7 @@ export default function GovernmentImageToolPage({ tool }) {
       const nextResults = [];
       for (const slot of slots) {
         const selectedDimensions = dimensions[slot.key] || {};
-        const output = await prepareImage(files[slot.key], {
+        let output = await prepareImage(files[slot.key], {
           width: selectedDimensions.width,
           height: selectedDimensions.height,
           whiteBackground,
@@ -336,6 +386,10 @@ export default function GovernmentImageToolPage({ tool }) {
           dpi: dpiMode ? Number(dpi) : null,
           targetBytes: compression ? Math.round(requestedKb * 1024) : null
         });
+        if (hasNameDateOption && addNameDate) {
+          const labeledOutput = await addPhotoNameDateFooter(output.blob, photoName, photoDate);
+          output = { ...output, ...labeledOutput };
+        }
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
         const baseName = files[slot.key].name.replace(/\.[^.]+$/, '') || 'image';
         nextResults.push({
@@ -373,7 +427,13 @@ export default function GovernmentImageToolPage({ tool }) {
           <label className="government-file-label">Select {slot.label.toLowerCase()} (JPG or PNG)
             <input type="file" accept="image/jpeg,image/png" onChange={(event) => selectFile(slot.key, event.target.files?.[0])}/>
           </label>
-          {previews[slot.key] && <figure className="government-image-preview"><img src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/><figcaption>{files[slot.key]?.name} · {size?.originalWidth} × {size?.originalHeight} px</figcaption></figure>}
+          {previews[slot.key] && <figure className="government-image-preview">
+            {hasNameDateOption && addNameDate ? <div className="government-photo-name-date-preview">
+              <img src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>
+              <div className="government-photo-name-date-strip"><strong>{photoName.trim().toLocaleUpperCase() || 'YOUR NAME'}</strong><span>{formatPhotoDate(photoDate) || 'DD/MM/YYYY'}</span></div>
+            </div> : <img src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>}
+            <figcaption>{files[slot.key]?.name} · {size?.originalWidth} × {size?.originalHeight} px</figcaption>
+          </figure>}
           {size && <fieldset className="government-dimensions">
             <legend>Output dimensions</legend>
             <div className="government-dimension-fields">
@@ -399,6 +459,14 @@ export default function GovernmentImageToolPage({ tool }) {
     <section className="government-tool-settings" aria-labelledby="government-settings-title">
       <h2 id="government-settings-title">Image settings</h2>
       {!dpiMode && <label className="government-setting-check"><input type="checkbox" checked={maintainAspect} onChange={(event) => setMaintainAspect(event.target.checked)}/> Keep the original aspect ratio when changing dimensions</label>}
+      {hasNameDateOption && <>
+        <label className="government-setting-check"><input type="checkbox" checked={addNameDate} onChange={(event) => { clearResults(); setAddNameDate(event.target.checked); }}/> Add name and date below the photo</label>
+        {addNameDate && <div className="government-name-date-fields">
+          <label className="government-inline-field">Name<input className="form-control" type="text" maxLength="40" autoComplete="name" placeholder="Enter the applicant name" value={photoName} onChange={(event) => { clearResults(); setPhotoName(event.target.value); }}/></label>
+          <label className="government-inline-field">Date<input className="form-control" type="date" value={photoDate} onChange={(event) => { clearResults(); setPhotoDate(event.target.value); }}/></label>
+          <p className="small text-secondary">The footer is added below the resized photo. The date is printed as DD/MM/YYYY; check the current application notice for its required format.</p>
+        </div>}
+      </>}
       {config.kind !== 'white-background' && !removeBackground && <label className="government-setting-check"><input type="checkbox" checked={whiteBackground} onChange={(event) => setWhiteBackground(event.target.checked)}/> Place transparent areas on a white background</label>}
       {config.kind === 'white-background' && <>
         <p>Similar colors in the image corners are sampled and turned white. This works best with a plain, evenly lit background; inspect hair and clothing edges in the preview.</p>

@@ -338,7 +338,10 @@ body {
   }
 }
 
-.pdfpro-tools-category h2 { color: var(--tool-accent); }
+.pdfpro-tools-category h2 { color: var(--tool-accent); line-height: 1.2; }
+@media (min-width: 576px) {
+  .pdfpro-tools-category h2 { min-height: 2.45em; }
+}
 .pdfpro-tools-dropdown .pdfpro-tools-category .pdfpro-tool-icon {
   border-color: color-mix(in srgb, var(--tool-accent), #fff 48%);
   background: linear-gradient(145deg, color-mix(in srgb, var(--tool-tint), #fff 24%), var(--tool-tint));

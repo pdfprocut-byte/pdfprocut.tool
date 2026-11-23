@@ -5,6 +5,15 @@ export function getToolCategoryClass(category) {
   return `tool-category-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 }
 
+const toolCategoryLabels = {
+  'Other Government Recruitment Tools': 'Other Recruitment Tools',
+  'Common Government Document Tools': 'Common Document Tools'
+};
+
+export function getToolCategoryLabel(category) {
+  return toolCategoryLabels[category] || category;
+}
+
 const iconBySlug = {
   'merge-pdf': FaObjectGroup, 'organize-pdf': FaObjectGroup, 'split-pdf': FaCut,
   'remove-pages': FaTrash, 'extract-pages': FaCut, 'repair-pdf': FaFilePdf,
