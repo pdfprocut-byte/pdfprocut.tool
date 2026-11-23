@@ -17,15 +17,22 @@ export function useScrollReveal(selector) {
       }
     }, { rootMargin: '0px 0px -24px 0px', threshold: revealThreshold });
 
-    // Observe new results after a filter changes and preserve earlier reveals.
-    for (const item of container.querySelectorAll(selector)) {
-      if (item.classList.contains('is-revealed')) continue;
-      item.classList.add('tool-scroll-reveal');
-      observer.observe(item);
-    }
+    const observeNewItems = () => {
+      for (const item of container.querySelectorAll(selector)) {
+        if (item.classList.contains('is-revealed')) continue;
+        item.classList.add('tool-scroll-reveal');
+        observer.observe(item);
+      }
+    };
+    observeNewItems();
+    const mutationObserver = typeof MutationObserver === 'function' ? new MutationObserver(observeNewItems) : null;
+    mutationObserver?.observe(container, { childList: true, subtree: true });
 
-    return () => observer.disconnect();
-  });
+    return () => {
+      observer.disconnect();
+      mutationObserver?.disconnect();
+    };
+  }, [selector]);
 
   return containerRef;
 }

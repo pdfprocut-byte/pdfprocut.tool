@@ -31,6 +31,7 @@ function governmentGuide(tool) {
   const dpiTool = tool.gov.kind === 'dpi';
   const removeBackground = tool.gov.kind === 'remove-background';
   const whiteBackgroundTool = tool.gov.kind === 'white-background';
+  const pixelEditingTool = removeBackground || whiteBackgroundTool || Boolean(tool.gov.crop);
   const pair = tool.gov.kind === 'pair';
   return {
     overview: serverProcessed
@@ -55,7 +56,7 @@ function governmentGuide(tool) {
           : 'Enter the width and height stated by the notice, inspect the resized preview, and download the image.',
     limits: serverProcessed
       ? 'The target is a maximum that may not be achievable without stronger quality loss. PDF compression may rasterize pages, removing searchable text. This document tool sends the selected file to the PDF Pro Cut server for processing; avoid using it for sensitive identity documents if that does not suit your privacy needs.'
-      : `Image processing runs in your browser and does not upload the source image. ${dpiTool ? 'Changing DPI metadata does not add image detail or change pixel dimensions. ' : ''}${removeBackground ? 'Background removal targets near-white pixels and can affect pale ink; inspect the result closely. ' : ''}${whiteBackgroundTool ? 'Background replacement samples corner colors and works best with a plain, even background; it may alter similar-colored edges. ' : ''}${tool.gov.kind === 'compress' ? 'The requested KB limit is best-effort; very small targets may not be achievable at readable quality. ' : ''}Dimensions and file-size rules vary by recruitment cycle. This tool does not certify that an image meets an agency's current requirements; follow the latest official notice.`,
+      : `Image processing runs in your browser and does not upload the source image. ${pixelEditingTool ? 'Background editing and automatic signature trimming support source images up to 12 megapixels. ' : ''}${dpiTool ? 'Changing DPI metadata does not add image detail or change pixel dimensions. ' : ''}${removeBackground ? 'Background removal targets near-white pixels and can affect pale ink; inspect the result closely. ' : ''}${whiteBackgroundTool ? 'Background replacement samples corner colors and works best with a plain, even background; it may alter similar-colored edges. ' : ''}${tool.gov.kind === 'compress' ? 'The requested KB limit is best-effort; very small targets may not be achievable at readable quality. ' : ''}Dimensions and file-size rules vary by recruitment cycle. This tool does not certify that an image meets an agency's current requirements; follow the latest official notice.`,
     faqs: [
       { question: 'Does this guarantee the image meets the current application rules?', answer: 'No. Requirements can differ by agency, post, and recruitment cycle. Use the values in the current official notice and check the downloaded file before submitting.' },
       { question: serverProcessed ? 'Is this document processed in my browser?' : 'Is my source image uploaded?', answer: serverProcessed ? 'No. PDF and Office compression uses the PDF Pro Cut server. Review the Privacy Policy and avoid uploading sensitive identity documents if server processing does not meet your needs.' : 'No. The source image stays in your browser while this image tool prepares the output.' }

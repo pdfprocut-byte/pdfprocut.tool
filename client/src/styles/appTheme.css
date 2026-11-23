@@ -124,6 +124,13 @@ body {
 .tool-category-optimize-pdf { --tool-accent: #87500c; --tool-tint: #ffedc2; }
 .tool-category-analyze-pdf { --tool-accent: #573ba7; --tool-tint: #e9dfff; }
 .tool-category-compress { --tool-accent: #087f79; --tool-tint: #c5f3e4; }
+.tool-category-kerala-psc-tools { --tool-accent: #a44718; --tool-tint: #ffeadb; }
+.tool-category-ssc-recruitment-tools { --tool-accent: #315db2; --tool-tint: #e1ebff; }
+.tool-category-upsc-tools { --tool-accent: #563da2; --tool-tint: #eee5ff; }
+.tool-category-railway-recruitment-tools { --tool-accent: #9a570d; --tool-tint: #ffedcf; }
+.tool-category-aadhaar-pan-tools { --tool-accent: #167066; --tool-tint: #dcf7ed; }
+.tool-category-other-government-recruitment-tools { --tool-accent: #8b386c; --tool-tint: #ffe5f2; }
+.tool-category-common-government-document-tools { --tool-accent: #6442a8; --tool-tint: #eee7ff; }
 
 .btn-primary {
   --bs-btn-bg: var(--brand);
@@ -327,7 +334,7 @@ body {
     z-index: 3;
     border-color: color-mix(in srgb, var(--tool-accent), #fff 45%);
     box-shadow: 0 20px 38px color-mix(in srgb, var(--tool-accent), transparent 82%), 0 8px 18px #30204c15;
-    transform: translateY(-6px) scale(1.12);
+    transform: translateY(-2px);
   }
 }
 
@@ -372,7 +379,7 @@ body {
   .pdfpro-tools-dropdown-inner { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (min-width: 1240px) {
-  .pdfpro-tools-dropdown-inner { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .pdfpro-tools-dropdown-inner { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 991.98px) {
   .pdfpro-navbar .pdfpro-navbar-toggler { border: 1px solid #ded2f0; border-radius: .6rem; background: #fff; }

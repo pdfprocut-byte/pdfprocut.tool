@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
+const maxPixelEditingPixels = 12_000_000;
+const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function canvasBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => {
@@ -11,7 +13,7 @@ function canvasBlob(canvas, type, quality) {
   });
 }
 
-function findContentBounds(imageData, width, height, threshold = 245) {
+async function findContentBounds(imageData, width, height, threshold = 245) {
   const { data } = imageData;
   let left = width; let top = height; let right = -1; let bottom = -1;
   for (let y = 0; y < height; y += 1) {
@@ -24,6 +26,7 @@ function findContentBounds(imageData, width, height, threshold = 245) {
         right = Math.max(right, x); bottom = Math.max(bottom, y);
       }
     }
+    if (y > 0 && y % 64 === 0) await yieldToBrowser();
   }
   if (right < left || bottom < top) return { x: 0, y: 0, width, height };
   const pad = Math.max(2, Math.round(Math.max(right - left + 1, bottom - top + 1) * 0.025));
@@ -52,18 +55,22 @@ function sampleCornerBackground(data, width, height) {
   }, { color: colors[0], distance: Infinity }).color;
 }
 
-function replaceSampledBackground(context, width, height, tolerance) {
+async function replaceSampledBackground(context, width, height, tolerance) {
   const image = context.getImageData(0, 0, width, height);
   const background = sampleCornerBackground(image.data, width, height);
   const cutoff = Number(tolerance);
-  for (let offset = 0; offset < image.data.length; offset += 4) {
-    const red = image.data[offset]; const green = image.data[offset + 1]; const blue = image.data[offset + 2];
-    const distance = Math.hypot(red - background[0], green - background[1], blue - background[2]);
-    if (distance >= cutoff) continue;
-    const amount = Math.max(0, Math.min(1, distance / cutoff));
-    image.data[offset] = Math.round(255 * (1 - amount) + red * amount);
-    image.data[offset + 1] = Math.round(255 * (1 - amount) + green * amount);
-    image.data[offset + 2] = Math.round(255 * (1 - amount) + blue * amount);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const red = image.data[offset]; const green = image.data[offset + 1]; const blue = image.data[offset + 2];
+      const distance = Math.hypot(red - background[0], green - background[1], blue - background[2]);
+      if (distance >= cutoff) continue;
+      const amount = Math.max(0, Math.min(1, distance / cutoff));
+      image.data[offset] = Math.round(255 * (1 - amount) + red * amount);
+      image.data[offset + 1] = Math.round(255 * (1 - amount) + green * amount);
+      image.data[offset + 2] = Math.round(255 * (1 - amount) + blue * amount);
+    }
+    if (y > 0 && y % 64 === 0) await yieldToBrowser();
   }
   context.putImageData(image, 0, 0);
 }
@@ -112,29 +119,40 @@ async function prepareImage(file, options) {
   const bitmap = await createImageBitmap(file);
   let baseCanvas;
   try {
-    if (bitmap.width * bitmap.height > maxPixels) throw new Error('This image is larger than 30 megapixels. Resize it before processing.');
-    baseCanvas = document.createElement('canvas');
-    baseCanvas.width = bitmap.width; baseCanvas.height = bitmap.height;
-    const baseContext = baseCanvas.getContext('2d', { willReadFrequently: true });
-    if (!baseContext) throw new Error('Your browser could not open this image.');
-    baseContext.drawImage(bitmap, 0, 0);
+    const needsPixelProcessing = options.removeBackground || options.replaceBackground || options.trim;
+    const pixelCount = bitmap.width * bitmap.height;
+    if (pixelCount > maxPixels) throw new Error('This image is larger than 30 megapixels. Resize it before processing.');
+    if (needsPixelProcessing && pixelCount > maxPixelEditingPixels) throw new Error('Background editing and signature trimming support images up to 12 megapixels. Resize a copy first, then try again.');
+    let baseContext = null;
+    if (needsPixelProcessing) {
+      baseCanvas = document.createElement('canvas');
+      baseCanvas.width = bitmap.width; baseCanvas.height = bitmap.height;
+      baseContext = baseCanvas.getContext('2d', { willReadFrequently: true });
+      if (!baseContext) throw new Error('Your browser could not open this image.');
+      baseContext.drawImage(bitmap, 0, 0);
+    }
+    const source = baseCanvas || bitmap;
 
     if (options.removeBackground) {
       const pixels = baseContext.getImageData(0, 0, bitmap.width, bitmap.height);
       const threshold = Number(options.backgroundThreshold);
-      for (let offset = 0; offset < pixels.data.length; offset += 4) {
-        const red = pixels.data[offset]; const green = pixels.data[offset + 1]; const blue = pixels.data[offset + 2];
-        const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
-        const lightness = Math.min(red, green, blue);
-        if (lightness >= threshold && spread <= 48) pixels.data[offset + 3] = 0;
-        else if (lightness >= threshold - 16 && spread <= 36) pixels.data[offset + 3] = Math.round(255 * (threshold - lightness + 16) / 16);
+      for (let y = 0; y < bitmap.height; y += 1) {
+        for (let x = 0; x < bitmap.width; x += 1) {
+          const offset = (y * bitmap.width + x) * 4;
+          const red = pixels.data[offset]; const green = pixels.data[offset + 1]; const blue = pixels.data[offset + 2];
+          const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
+          const lightness = Math.min(red, green, blue);
+          if (lightness >= threshold && spread <= 48) pixels.data[offset + 3] = 0;
+          else if (lightness >= threshold - 16 && spread <= 36) pixels.data[offset + 3] = Math.round(255 * (threshold - lightness + 16) / 16);
+        }
+        if (y > 0 && y % 64 === 0) await yieldToBrowser();
       }
       baseContext.putImageData(pixels, 0, 0);
     }
-    if (options.replaceBackground) replaceSampledBackground(baseContext, bitmap.width, bitmap.height, options.backgroundTolerance);
+    if (options.replaceBackground) await replaceSampledBackground(baseContext, bitmap.width, bitmap.height, options.backgroundTolerance);
 
     let crop = { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
-    if (options.trim) crop = findContentBounds(baseContext.getImageData(0, 0, bitmap.width, bitmap.height), bitmap.width, bitmap.height);
+    if (options.trim) crop = await findContentBounds(baseContext.getImageData(0, 0, bitmap.width, bitmap.height), bitmap.width, bitmap.height);
     const requestedWidth = Number(options.width) || crop.width;
     const requestedHeight = Number(options.height) || crop.height;
     if (!Number.isInteger(requestedWidth) || !Number.isInteger(requestedHeight) || requestedWidth < 1 || requestedHeight < 1 || requestedWidth * requestedHeight > maxPixels) {
@@ -143,7 +161,6 @@ async function prepareImage(file, options) {
 
     const format = options.format === 'png' ? 'image/png' : 'image/jpeg';
     const canvas = document.createElement('canvas');
-    const qualitySteps = options.targetBytes && format === 'image/jpeg' ? [0.94, 0.84, 0.74, 0.64, 0.54, 0.44, 0.34, 0.24] : [0.92];
     let best = null;
     let bestWidth = requestedWidth;
     let bestHeight = requestedHeight;
@@ -159,7 +176,10 @@ async function prepareImage(file, options) {
         if (options.whiteBackground || format === 'image/jpeg') {
           context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
         }
-        context.drawImage(baseCanvas, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+        const qualitySteps = options.targetBytes && format === 'image/jpeg'
+          ? scaleStep === 0 ? [0.94, 0.76, 0.56] : [Math.max(0.32, 0.56 - (scaleStep - 1) * 0.035)]
+          : [0.92];
         for (const quality of qualitySteps) {
           const candidate = await canvasBlob(canvas, format, quality);
           if (!best || candidate.size < best.size) { best = candidate; bestWidth = width; bestHeight = height; }
@@ -343,6 +363,7 @@ export default function GovernmentImageToolPage({ tool }) {
     <h1>{tool.name}</h1>
     <p className="lead">{tool.description}</p>
     <p className="government-tool-local-note" role="note">Image processing happens in this browser. Your image is not uploaded by this tool. Use the dimensions and file-size limits in the current application notice; the suggested settings are not official requirements.</p>
+    {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
 
     <div className="government-tool-inputs">
       {slots.map((slot) => {
@@ -378,7 +399,7 @@ export default function GovernmentImageToolPage({ tool }) {
     <section className="government-tool-settings" aria-labelledby="government-settings-title">
       <h2 id="government-settings-title">Image settings</h2>
       {!dpiMode && <label className="government-setting-check"><input type="checkbox" checked={maintainAspect} onChange={(event) => setMaintainAspect(event.target.checked)}/> Keep the original aspect ratio when changing dimensions</label>}
-      {config.kind !== 'white-background' && !removeBackground && <label className="government-setting-check"><input type="checkbox" checked={whiteBackground} onChange={(event) => setWhiteBackground(event.target.checked)}/> Place the image on a white background</label>}
+      {config.kind !== 'white-background' && !removeBackground && <label className="government-setting-check"><input type="checkbox" checked={whiteBackground} onChange={(event) => setWhiteBackground(event.target.checked)}/> Place transparent areas on a white background</label>}
       {config.kind === 'white-background' && <>
         <p>Similar colors in the image corners are sampled and turned white. This works best with a plain, evenly lit background; inspect hair and clothing edges in the preview.</p>
         <label className="government-inline-field">Background color tolerance: {backgroundTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={backgroundTolerance} onChange={(event) => setBackgroundTolerance(event.target.value)}/></label>
