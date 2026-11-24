@@ -13,7 +13,6 @@
 .pdfpro-tools-dropdown-toggle svg{transition:transform .18s ease}
 .pdfpro-tool-section-nav{display:flex;align-items:center;gap:.05rem;margin-inline:.18rem;padding-left:.28rem;border-left:1px solid #e5e7ed}
 .pdfpro-tool-section-nav .nav-link{padding-inline:.55rem}
-.pdfpro-tool-section-nav .nav-link+.nav-link::before{content:'|';margin-right:.45rem;color:#aab0bd;font-weight:400}
 .pdfpro-tools-dropdown{position:absolute;top:100%;right:0;left:0;z-index:1031;display:none;padding:1.1rem max(1rem,calc((100vw - 1680px)/2)) 1.25rem;border-bottom:1px solid #e7e9ef;border-radius:0 0 16px 16px;background:#fff;box-shadow:0 18px 35px #1720331a}
 .pdfpro-tools-dropdown.is-open{display:block}
 .pdfpro-tools-dropdown-inner{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1.2rem .85rem;max-width:1680px}
@@ -51,7 +50,6 @@
   .pdfpro-tools-item{width:100%}
   .pdfpro-tool-section-nav{flex-direction:column;align-items:stretch;gap:0;width:100%;margin:.15rem 0;padding:.15rem 0 .15rem .45rem;border-left:2px solid #e5e7ed}
   .pdfpro-tool-section-nav .nav-link{padding:.55rem .25rem}
-  .pdfpro-tool-section-nav .nav-link+.nav-link::before{content:none}
   .pdfpro-tools-trigger-row{justify-content:space-between}
   .pdfpro-tools-dropdown-toggle{width:2.5rem;height:2.5rem}
   .pdfpro-tools-dropdown{position:static;max-height:55vh;overflow-y:auto;padding:.85rem .55rem;border:0;border-radius:8px;background:#f8f9fb;box-shadow:none}
@@ -90,3 +88,40 @@
 @media(max-width:991.98px){.pdfpro-navbar-container{min-height:62px}.pdfpro-primary-nav{padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}.pdfpro-primary-nav .nav-link.active{background:#fff3f4;box-shadow:none}.pdfpro-tools-dropdown-toggle{height:2.5rem}}
 .pdfpro-navbar .navbar-brand svg{margin-left:.1rem;color:#df2338;font-size:.9rem;filter:drop-shadow(0 2px 2px #df233842);transform:rotate(-12deg)}
 .pdfpro-user-greeting{text-decoration:none;transition:color .16s ease}.pdfpro-user-greeting:hover,.pdfpro-user-greeting:focus-visible{color:#c22036}
+
+.pdfpro-section-menu{position:relative}
+.pdfpro-section-trigger-row{display:flex;align-items:center}
+.pdfpro-section-menu+.pdfpro-section-menu .pdfpro-section-link::before{content:'|';margin-right:.45rem;color:#aab0bd;font-weight:400}
+.pdfpro-section-menu .pdfpro-section-link{padding-inline:.45rem}
+.pdfpro-section-dropdown{position:absolute;top:calc(100% + .6rem);left:0;z-index:1040;display:none;width:min(88vw,32rem);max-height:min(72vh,44rem);overflow:auto;padding:.9rem;border:1px solid #e1e5ee;border-radius:18px;background:#fff;box-shadow:0 22px 55px #1720332b}
+.pdfpro-section-dropdown.is-open{display:block;animation:pdfpro-tools-menu-in .2s ease-out both}
+.pdfpro-section-dropdown-heading{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.65rem;padding:.15rem .1rem .6rem;border-bottom:1px solid #e8ebf2}
+.pdfpro-section-dropdown-heading h2{margin:0;color:#30384b;font-size:.86rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.pdfpro-section-dropdown-heading>a{padding:.35rem .55rem;border-radius:8px;color:#5940bb;font-size:.72rem;font-weight:750;text-decoration:none}
+.pdfpro-section-dropdown-heading>a:hover{background:#fff;color:#a51d2e}
+.pdfpro-section-tool-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem}
+.pdfpro-section-tool-option{display:flex;align-items:center;gap:.55rem;min-width:0;min-height:2.65rem;padding:.4rem .45rem;border:1px solid #e9ebf1;border-radius:10px;background:#fff;color:#343b4c;font-size:.75rem;font-weight:650;line-height:1.3;text-decoration:none;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.pdfpro-section-tool-option>span:last-child{min-width:0;overflow-wrap:anywhere}
+.pdfpro-section-tool-option:hover,.pdfpro-section-tool-option:focus-visible{transform:translateY(-1px);border-color:#cfc5fa;box-shadow:0 6px 14px #28204a16;color:#6b3fe0}
+.pdfpro-section-tool-option .pdfpro-tool-icon{flex:0 0 1.8rem;width:1.8rem;height:1.8rem;margin:0}
+.pdfpro-section-menu-government .pdfpro-section-dropdown{border-color:#bfdfd8;background:linear-gradient(145deg,#f0fcf8,#f3f7ff)}
+.pdfpro-section-menu-documents .pdfpro-section-dropdown{border-color:#ead9b0;background:linear-gradient(145deg,#fffaf0,#fff5f3)}
+.pdfpro-section-menu-social-media .pdfpro-section-dropdown{right:0;left:auto;border-color:#d8b7f1;background:radial-gradient(ellipse at 8% 0%,#fff4b8 0,transparent 35%),radial-gradient(ellipse at 95% 15%,#ffcde4 0,transparent 38%),linear-gradient(135deg,#f4e8ff 0%,#e5f5ff 52%,#e3fff2 100%);box-shadow:0 22px 55px #7929b333}
+.pdfpro-section-menu-social-media .pdfpro-section-dropdown-heading{border-bottom-color:#dfc9ef}
+.pdfpro-section-menu-social-media .pdfpro-section-dropdown-heading h2{color:#6924a9}
+.pdfpro-section-menu-social-media .pdfpro-section-tool-list{grid-template-columns:1fr}
+.pdfpro-section-menu-social-media .pdfpro-section-tool-option{border-color:#ffffffc9;background:linear-gradient(115deg,#ffffffed,#fff9ffdc);box-shadow:0 4px 12px #5b277012}
+.pdfpro-section-menu-social-media .pdfpro-section-tool-option:nth-child(3n+1) .pdfpro-tool-icon{background:linear-gradient(135deg,#ffb8d6,#c9b9ff);color:#792bc1}
+.pdfpro-section-menu-social-media .pdfpro-section-tool-option:nth-child(3n+2) .pdfpro-tool-icon{background:linear-gradient(135deg,#9debdc,#a8d8ff);color:#176c88}
+.pdfpro-section-menu-social-media .pdfpro-section-tool-option:nth-child(3n) .pdfpro-tool-icon{background:linear-gradient(135deg,#ffe697,#ffb6a9);color:#a4473d}
+.pdfpro-section-menu-social-media .pdfpro-section-tool-option:hover,.pdfpro-section-menu-social-media .pdfpro-section-tool-option:focus-visible{border-color:#b98ee6;background:#fff;box-shadow:0 8px 18px #6024a329;color:#6427aa}
+@media(max-width:991.98px){
+  .pdfpro-tool-section-nav{flex-direction:column;align-items:stretch;gap:0;width:100%;margin:.15rem 0;padding:.15rem 0 .15rem .45rem;border-left:2px solid #e5e7ed}
+  .pdfpro-section-menu{width:100%}
+  .pdfpro-section-trigger-row{justify-content:space-between}
+  .pdfpro-section-menu+.pdfpro-section-menu .pdfpro-section-link::before{content:none}
+  .pdfpro-section-menu .pdfpro-section-link{padding:.55rem .25rem}
+  .pdfpro-section-dropdown,.pdfpro-section-menu-social-media .pdfpro-section-dropdown{position:static;width:100%;max-height:50vh;margin:.25rem 0 .6rem;padding:.7rem;border-radius:12px}
+  .pdfpro-section-tool-list,.pdfpro-section-menu-social-media .pdfpro-section-tool-list{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){.pdfpro-section-dropdown.is-open,.pdfpro-section-tool-option{animation:none;transition:none}}
