@@ -40,6 +40,8 @@ const catalog = [
   { slug: 'compress-files', name: 'Compress PDF & Office', description: 'Reduce PDF, Word, Excel, and PowerPoint files toward a target size.', category: 'Compress', endpoint: 'compress', accept: '.pdf,.docx,.docm,.dotx,.dotm,.xlsx,.xlsm,.xltx,.xltm,.pptx,.pptm,.ppsx,.ppsm,.potx,.potm', multiple: false },
   { slug: 'compress-image', name: 'Compress Image', description: 'Reduce JPG or PNG image size with a selectable clarity setting.', category: 'Compress', endpoint: 'compress-image', accept: 'image/jpeg,image/png', multiple: false },
   { slug: 'social-media-profile-resizer', name: 'Social Media Profile Photo Resizer', description: 'Resize and crop a profile photo for Instagram, Facebook, WhatsApp, X, LinkedIn, TikTok, YouTube, or Telegram.', category: 'Social Media', section: 'Social Media', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'social-profile', subject: 'profile photo', defaultPreset: 'instagram' } },
+  { slug: 'social-media-post-resizer', name: 'Social Media Post Image Resizer', description: 'Prepare square, portrait, or landscape feed images with editable default sizes.', category: 'Social Media', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'social-post', subject: 'post image', presetGroup: 'post', defaultPreset: 'square' } },
+  { slug: 'social-media-story-resizer', name: 'Social Media Story & Reel Resizer', description: 'Resize vertical story, reel, and short-form images with platform starting presets you can customize.', category: 'Social Media', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'social-story', subject: 'story or reel image', presetGroup: 'story', defaultPreset: 'instagram' } },
   { slug: 'kerala-psc-photo-resizer', name: 'Kerala PSC Photo Resizer', description: 'Resize a photo for a Kerala PSC application using the dimensions in its current notification.', category: 'Kerala PSC Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'resize', subject: 'photo' } },
   { slug: 'kerala-psc-signature-resizer', name: 'Kerala PSC Signature Resizer', description: 'Resize and optionally crop a signature image for a Kerala PSC application.', category: 'Kerala PSC Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'resize', subject: 'signature', crop: true } },
   { slug: 'psc-photo-kb-compressor', name: 'PSC Photo KB Compressor', description: 'Resize and compress a PSC application photo toward a chosen KB limit.', category: 'Kerala PSC Tools', endpoint: 'government-image', accept: 'image/jpeg,image/png', multiple: false, gov: { kind: 'compress', subject: 'photo' } },
@@ -80,5 +82,5 @@ const catalog = [
 
 export const toolCatalog = catalog.map((tool) => ({
   ...tool,
-  section: tool.section || (tool.gov ? 'Government Services' : 'Documents')
+  section: tool.section || (tool.category === 'Social Media' ? 'Social Media' : tool.gov ? 'Government' : 'Documents')
 }));

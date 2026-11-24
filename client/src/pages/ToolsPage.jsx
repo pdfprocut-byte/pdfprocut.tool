@@ -11,16 +11,16 @@ const featuredSlugs = ['merge-pdf', 'split-pdf', 'compress-files', 'kerala-psc-p
 const toolRanks = new Map(featuredSlugs.map((slug, index) => [slug, index]));
 const orderedTools = [...tools].sort((a, b) => (toolRanks.get(a.slug) ?? featuredSlugs.length) - (toolRanks.get(b.slug) ?? featuredSlugs.length));
 const sections = [
+  { name: 'Government', description: 'Prepare application photos, signatures, scans, and supporting files using the current notice.' },
   { name: 'Documents', description: 'Work with PDFs, images, and Office files.' },
-  { name: 'Government Services', description: 'Prepare application photos, signatures, scans, and supporting files using the current notice.' },
-  { name: 'Social Media', description: 'Resize profile pictures for major social platforms. Select a platform preset, then customize the output if needed.' }
+  { name: 'Social Media', description: 'Resize profile photos, feed posts, stories, and reels with starting sizes you can customize.' }
 ];
 
 export default function ToolsPage() {
   const { pendingToolFile } = useProfile();
   const toolsSectionRef = useScrollReveal('.tool-card');
   const [query, setQuery] = useState('');
-  const [activeSection, setActiveSection] = useState('Documents');
+  const [activeSection, setActiveSection] = useState('Government');
   const searchTerm = query.trim().toLowerCase();
   const visibleTools = orderedTools.filter((tool) =>
     tool.section === activeSection &&
@@ -36,7 +36,7 @@ export default function ToolsPage() {
           <Link to="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Tools</span>
         </nav>
         <h1>Online <em>file tools.</em></h1>
-        <p>Choose a document tool, prepare a government application image, or resize a profile photo for social media.</p>
+        <p>Choose a government, document, or social media tool and start with editable size presets.</p>
         <div className="tools-search-wrap">
           <FaSearch aria-hidden="true"/>
           <input
@@ -66,7 +66,7 @@ export default function ToolsPage() {
         <h2>{activeSection}</h2>
         <p>{sections.find(({ name }) => name === activeSection)?.description}</p>
       </header>
-      {activeSection === 'Government Services' && <section className="government-tools-overview" aria-label="Government image tool features">
+      {activeSection === 'Government' && <section className="government-tools-overview" aria-label="Government image tool features">
         <div>
           <span className="pdfpro-info-eyebrow">APPLICATION IMAGE TOOLS</span>
           <h3>Start with researched dimensions</h3>
@@ -77,6 +77,19 @@ export default function ToolsPage() {
           <li>Editable width and height</li>
           <li>File-size targets where published</li>
           <li>Browser-based preview and download</li>
+        </ul>
+      </section>}
+      {activeSection === 'Social Media' && <section className="government-tools-overview" aria-label="Social media image tool features">
+        <div>
+          <span className="pdfpro-info-eyebrow">SOCIAL IMAGE TOOLS</span>
+          <h3>Start with a preset, then make it yours</h3>
+          <p>Choose a profile, feed, or vertical content size. The output dimensions and image settings remain editable before download.</p>
+        </div>
+        <ul>
+          <li>Profile photo platform presets</li>
+          <li>Square, portrait, and landscape feed sizes</li>
+          <li>Vertical story and reel presets</li>
+          <li>Custom dimensions and frame handling</li>
         </ul>
       </section>}
       {visibleTools.length ? <ToolGrid tools={visibleTools}/> : <div className="tools-empty-state">

@@ -32,6 +32,6 @@ const iconBySlug = {
 
 export const tools = toolCatalog.map((tool) => ({
   ...tool,
-  section: tool.section || (tool.gov ? 'Government Services' : 'Documents'),
+  section: tool.section || (tool.category === 'Social Media' ? 'Social Media' : tool.gov ? 'Government' : 'Documents'),
   icon: iconBySlug[tool.slug] || (tool.gov?.kind === 'pdf-compress' ? FaCompress : FaFileImage)
 }));

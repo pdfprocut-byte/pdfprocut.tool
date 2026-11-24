@@ -49,6 +49,48 @@ export const socialProfilePresets = [
   }
 ];
 
+export const socialPostPresets = [
+  {
+    id: 'square', label: 'Square feed image', width: 1080, height: 1080, shape: 'Square', aspectLabel: '1:1 aspect ratio',
+    guidance: 'A common square canvas for feed posts. Platform upload limits can vary; edit the output dimensions to match your destination.'
+  },
+  {
+    id: 'portrait', label: 'Portrait feed image', width: 1080, height: 1350, shape: 'Portrait', aspectLabel: '4:5 aspect ratio',
+    guidance: 'A common portrait canvas for feed posts. Platform upload limits can vary; edit the output dimensions to match your destination.'
+  },
+  {
+    id: 'landscape', label: 'LinkedIn link image', width: 1200, height: 627, shape: 'Landscape', aspectLabel: '1.91:1 aspect ratio',
+    guidance: 'LinkedIn recommends a 1.91:1 image with a minimum size of 1200 x 627 px for link previews.',
+    sourceLabel: 'LinkedIn image specifications',
+    sourceUrl: 'https://www.linkedin.com/help/linkedin/answer/a521928/image-specifications-for-your-linkedin-pages-and-career-page'
+  }
+];
+
+export const socialStoryPresets = [
+  {
+    id: 'instagram', label: 'Instagram Story / Reel', width: 1080, height: 1920, shape: 'Vertical', aspectLabel: '9:16 aspect ratio',
+    guidance: 'A 9:16 working canvas for full-screen vertical content. Check the current upload rules for your platform before posting.'
+  },
+  {
+    id: 'facebook', label: 'Facebook Story', width: 1080, height: 1920, shape: 'Vertical', aspectLabel: '9:16 aspect ratio',
+    guidance: 'A 9:16 working canvas for full-screen vertical content. Check the current upload rules for your platform before posting.'
+  },
+  {
+    id: 'tiktok', label: 'TikTok vertical image', width: 1080, height: 1920, shape: 'Vertical', aspectLabel: '9:16 aspect ratio',
+    guidance: 'A 9:16 working canvas for full-screen vertical content. Check the current upload rules for your platform before posting.'
+  },
+  {
+    id: 'youtube-shorts', label: 'YouTube Shorts thumbnail', width: 1080, height: 1920, shape: 'Vertical', aspectLabel: '9:16 aspect ratio',
+    guidance: 'YouTube recommends a 9:16 aspect ratio for Shorts thumbnails. Increase the dimensions if you need a higher-resolution source.',
+    sourceLabel: 'YouTube thumbnail guidance',
+    sourceUrl: 'https://support.google.com/youtube/answer/72431?hl=en'
+  },
+  {
+    id: 'whatsapp', label: 'WhatsApp Status', width: 1080, height: 1920, shape: 'Vertical', aspectLabel: '9:16 aspect ratio',
+    guidance: 'A 9:16 working canvas for full-screen vertical content. Check the current upload rules for your platform before posting.'
+  }
+];
+
 export const governmentImagePresets = {
   keralaPscPhoto: {
     width: 150, height: 200, maxKb: 30, defaultTargetKb: 30, format: 'jpeg',

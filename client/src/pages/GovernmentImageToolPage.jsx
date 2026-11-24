@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { governmentImagePresets, governmentPresetByTool, socialProfilePresets } from '../../../shared/imagePresets.mjs';
+import { governmentImagePresets, governmentPresetByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
@@ -320,13 +320,15 @@ export default function GovernmentImageToolPage({ tool }) {
   const config = tool.gov || {};
   const pair = config.kind === 'pair';
   const socialProfileTool = config.kind === 'social-profile';
+  const socialMediaTool = socialProfileTool || config.kind === 'social-post' || config.kind === 'social-story';
+  const socialPresets = config.presetGroup === 'post' ? socialPostPresets : config.presetGroup === 'story' ? socialStoryPresets : socialProfilePresets;
   const slots = pair
     ? [{ key: 'photo', label: 'Photo' }, { key: 'signature', label: 'Signature' }]
-    : [{ key: 'image', label: socialProfileTool ? 'Profile photo' : config.subject ? `${config.subject[0].toUpperCase()}${config.subject.slice(1)} image` : 'Image' }];
+    : [{ key: 'image', label: socialProfileTool ? 'Profile photo' : config.subject ? `${config.subject[0].toUpperCase()}${config.subject.slice(1)}` : 'Image' }];
   const hasNameDateOption = tool.slug === 'kerala-psc-photo-resizer' || tool.slug === 'psc-photo-signature-maker';
-  const [socialPresetId, setSocialPresetId] = useState(config.defaultPreset || 'instagram');
-  const selectedSocialPreset = socialProfilePresets.find((preset) => preset.id === socialPresetId) || socialProfilePresets[0];
-  const presetForSlot = (slot) => socialProfileTool ? selectedSocialPreset : resolveGovernmentPreset(tool, slot);
+  const [socialPresetId, setSocialPresetId] = useState(config.defaultPreset || socialPresets[0]?.id || '');
+  const selectedSocialPreset = socialPresets.find((preset) => preset.id === socialPresetId) || socialPresets[0];
+  const presetForSlot = (slot) => socialMediaTool ? selectedSocialPreset : resolveGovernmentPreset(tool, slot);
   const initialPreset = presetForSlot(slots[0].key);
   const [files, setFiles] = useState({});
   const [previews, setPreviews] = useState({});
@@ -335,7 +337,7 @@ export default function GovernmentImageToolPage({ tool }) {
   const [targetKb, setTargetKb] = useState(String(initialPreset?.defaultTargetKb ?? initialPreset?.maxKb ?? ''));
   const [dpi, setDpi] = useState(String(initialPreset?.dpi || '300'));
   const [whiteBackground, setWhiteBackground] = useState(initialPreset?.whiteBackground ?? config.kind === 'white-background');
-  const [fitMode, setFitMode] = useState(socialProfileTool ? 'cover' : initialPreset?.fitMode || 'contain');
+  const [fitMode, setFitMode] = useState(initialPreset?.fitMode || (socialMediaTool ? 'cover' : 'contain'));
   const [trim, setTrim] = useState(Boolean(config.crop));
   const [backgroundThreshold, setBackgroundThreshold] = useState('238');
   const [backgroundTolerance, setBackgroundTolerance] = useState('48');
@@ -410,13 +412,13 @@ export default function GovernmentImageToolPage({ tool }) {
   };
 
   const changeSocialPreset = (presetId) => {
-    const preset = socialProfilePresets.find((item) => item.id === presetId);
+    const preset = socialPresets.find((item) => item.id === presetId);
     if (!preset) return;
     clearResults();
     setSocialPresetId(presetId);
     setTargetKb(String(preset.defaultTargetKb ?? preset.maxKb ?? ''));
-    setFormat('jpeg');
-    setFitMode('cover');
+    setFormat(preset.format || 'jpeg');
+    setFitMode(preset.fitMode || 'cover');
     setDimensions((current) => {
       const image = current.image;
       if (!image?.originalWidth || !image?.originalHeight) return current;
@@ -492,7 +494,7 @@ export default function GovernmentImageToolPage({ tool }) {
         let output = await prepareImage(files[slot.key], {
           width: selectedDimensions.width,
           height: selectedDimensions.height,
-          fitMode: slotPreset?.fitMode || fitMode,
+          fitMode,
           whiteBackground,
           trim: trim && (pair ? slot.key === 'signature' : true),
           removeBackground,
@@ -522,7 +524,8 @@ export default function GovernmentImageToolPage({ tool }) {
         });
       }
       setResults(nextResults);
-      toast.success(pair ? 'Photo and signature are ready.' : socialProfileTool ? `${selectedSocialPreset.label} profile photo is ready.` : 'Your image is ready to download.');
+      const socialResultLabel = socialProfileTool ? 'profile photo' : 'image';
+      toast.success(pair ? 'Photo and signature are ready.' : socialMediaTool ? `${selectedSocialPreset.label} ${socialResultLabel} is ready.` : 'Your image is ready to download.');
     } catch (error) {
       toast.error(error.message || 'Could not prepare this image.');
     } finally {
@@ -535,20 +538,20 @@ export default function GovernmentImageToolPage({ tool }) {
     <h1>{tool.name}</h1>
     <p className="lead">{tool.description}</p>
     <div className="government-tool-local-note" role="note">
-      <p>{socialProfileTool
-        ? `${selectedSocialPreset.guidance} Profile photos are commonly shown as circles; check the preview after cropping.`
+      <p>{socialMediaTool
+        ? `${selectedSocialPreset.guidance}${socialProfileTool ? ' Profile photos are commonly shown as circles; check the preview after cropping.' : ''}`
         : currentPreset?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
-      {currentPreset?.sourceUrl && <a href={currentPreset.sourceUrl} target="_blank" rel="noreferrer">{socialProfileTool ? `${selectedSocialPreset.label} help and image guidance` : currentPreset.sourceLabel || 'Official size guidance'} ↗</a>}
-      <p className="government-tool-privacy-note">Your image stays in this browser. Presets can be changed to match a different application or notice.</p>
+      {(socialMediaTool ? selectedSocialPreset.sourceUrl : currentPreset?.sourceUrl) && <a href={socialMediaTool ? selectedSocialPreset.sourceUrl : currentPreset.sourceUrl} target="_blank" rel="noreferrer">{socialMediaTool ? selectedSocialPreset.sourceLabel || `${selectedSocialPreset.label} image guidance` : currentPreset.sourceLabel || 'Official size guidance'} ↗</a>}
+      <p className="government-tool-privacy-note">Your image stays in this browser. Preset sizes, dimensions, frame handling, and output format can be changed before download.</p>
     </div>
     {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
 
-    {socialProfileTool && <section className="government-tool-settings social-profile-settings" aria-labelledby="social-profile-preset-title">
-      <h2 id="social-profile-preset-title">Profile photo size</h2>
-      <label className="government-inline-field">Social platform<select className="form-select" value={socialPresetId} onChange={(event) => changeSocialPreset(event.target.value)}>
-        {socialProfilePresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} — {preset.width} × {preset.height} px</option>)}
+    {socialMediaTool && <section className="government-tool-settings social-profile-settings" aria-labelledby="social-media-preset-title">
+      <h2 id="social-media-preset-title">{socialProfileTool ? 'Profile photo size' : 'Default image size'}</h2>
+      <label className="government-inline-field">{socialProfileTool ? 'Social platform' : 'Image preset'}<select className="form-select" value={socialPresetId} onChange={(event) => changeSocialPreset(event.target.value)}>
+        {socialPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} — {preset.width} × {preset.height} px</option>)}
       </select></label>
-      <p className="small text-secondary mb-0">{selectedSocialPreset.shape} · {selectedSocialPreset.width} × {selectedSocialPreset.height} px · 1:1 aspect ratio</p>
+      <p className="small text-secondary mb-0">{selectedSocialPreset.shape} · {selectedSocialPreset.width} × {selectedSocialPreset.height} px · {selectedSocialPreset.aspectLabel || '1:1 aspect ratio'}</p>
     </section>}
 
     <div className="government-tool-inputs">
@@ -609,7 +612,7 @@ export default function GovernmentImageToolPage({ tool }) {
       {showSizeTarget && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter a maximum file size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}Compression targets this maximum; check the downloaded size because very small limits may not be achievable.</small></label>}
       {dpiMode && <label className="government-inline-field">Resolution metadata (DPI)<input className="form-control" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/><small>DPI changes print-size metadata; it does not add detail or increase the pixel dimensions.</small></label>}
       {removeBackground && <label className="government-inline-field">White-background removal threshold: {backgroundThreshold}<input className="form-range" type="range" min="205" max="252" step="1" value={backgroundThreshold} onChange={(event) => setBackgroundThreshold(event.target.value)}/><small>Works best with a plain, near-white background. Inspect fine signature strokes before using the PNG.</small></label>}
-      {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialProfileTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
+      {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialMediaTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
     </section>
 
     <button className="btn btn-primary mt-4" type="button" onClick={process} disabled={busy || slots.some(({ key }) => !files[key])}>{busy ? 'Preparing image…' : pair ? 'Prepare photo and signature' : tool.name}</button>
