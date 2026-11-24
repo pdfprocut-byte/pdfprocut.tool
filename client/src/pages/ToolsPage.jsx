@@ -11,9 +11,9 @@ const featuredSlugs = ['merge-pdf', 'split-pdf', 'compress-files', 'kerala-psc-p
 const toolRanks = new Map(featuredSlugs.map((slug, index) => [slug, index]));
 const orderedTools = [...tools].sort((a, b) => (toolRanks.get(a.slug) ?? featuredSlugs.length) - (toolRanks.get(b.slug) ?? featuredSlugs.length));
 const sections = [
-  { name: 'Government', description: 'Prepare application photos, signatures, scans, and supporting files using the current notice.' },
-  { name: 'Documents', description: 'Work with PDFs, images, and Office files.' },
-  { name: 'Social Media', description: 'Resize profile photos, feed posts, stories, and reels with starting sizes you can customize.' }
+  { name: 'Government' },
+  { name: 'Documents' },
+  { name: 'Social Media' }
 ];
 
 export default function ToolsPage() {
@@ -61,11 +61,6 @@ export default function ToolsPage() {
         </div>
         <p className="tools-result-count" role="status">{visibleTools.length} {visibleTools.length === 1 ? 'tool' : 'tools'}</p>
       </div>
-      <header className="tools-section-heading">
-        <span className="pdfpro-info-eyebrow">TOOL SECTION</span>
-        <h2>{activeSection}</h2>
-        <p>{sections.find(({ name }) => name === activeSection)?.description}</p>
-      </header>
       {activeSection === 'Government' && <section className="government-tools-overview" aria-label="Government image tool features">
         <div>
           <span className="pdfpro-info-eyebrow">APPLICATION IMAGE TOOLS</span>
