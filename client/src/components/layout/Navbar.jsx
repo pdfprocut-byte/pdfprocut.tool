@@ -3,11 +3,20 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { FaChevronDown, FaRegUser } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { tools } from '../../tools.js';
+import { getToolCategoryClass, tools } from '../../tools.js';
 import BrandLogo from './BrandLogo.jsx';
 import '../../styles/navbar.css';
 
 const toolSectionNames = ['Government', 'Documents', 'Social Media'];
+
+function groupToolsByCategory(sectionTools) {
+  const groups = new Map();
+  sectionTools.forEach((tool) => {
+    if (!groups.has(tool.category)) groups.set(tool.category, []);
+    groups.get(tool.category).push(tool);
+  });
+  return [...groups.entries()];
+}
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -77,7 +86,7 @@ export default function Navbar() {
               const active = location.pathname === '/tools' && activeToolSection === section;
               const isOpen = openToolSection === section;
               const sectionSlug = section.toLowerCase().replaceAll(' ', '-');
-              const sectionTools = tools.filter((tool) => tool.section === section);
+              const sectionCategories = groupToolsByCategory(tools.filter((tool) => tool.section === section));
               const dropdownId = `pdfpro-${sectionSlug}-dropdown`;
               return <div className={`pdfpro-section-menu pdfpro-section-menu-${sectionSlug}${isOpen ? ' is-open' : ''}`} key={section}>
                 <div className="pdfpro-tools-trigger-row pdfpro-section-trigger-row">
@@ -102,10 +111,15 @@ export default function Navbar() {
                     <h2>{section}</h2>
                     <Link to={`/tools?section=${encodeURIComponent(section)}`} onClick={closeMenus}>View all</Link>
                   </div>
-                  <div className="pdfpro-section-tool-list">
-                    {sectionTools.map((tool) => <Link className="pdfpro-section-tool-option" key={tool.slug} to={`/tools/${tool.slug}`} onClick={closeMenus}>
-                      <span className="pdfpro-tool-icon"><tool.icon aria-hidden="true"/></span><span>{tool.name}</span>
-                    </Link>)}
+                  <div className="pdfpro-section-categories-grid">
+                    {sectionCategories.map(([category, categoryTools]) => <section className={`pdfpro-section-category-card ${getToolCategoryClass(category)}`} key={category}>
+                      <h3>{category}</h3>
+                      <div className="pdfpro-section-tool-list">
+                        {categoryTools.map((tool) => <Link className="pdfpro-section-tool-option" key={tool.slug} to={`/tools/${tool.slug}`} onClick={closeMenus}>
+                          <span className="pdfpro-tool-icon"><tool.icon aria-hidden="true"/></span><span>{tool.name}</span>
+                        </Link>)}
+                      </div>
+                    </section>)}
                   </div>
                 </div>
               </div>;
