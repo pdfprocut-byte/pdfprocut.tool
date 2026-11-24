@@ -8,6 +8,7 @@ import BrandLogo from './BrandLogo.jsx';
 import '../../styles/navbar.css';
 
 const categoryOrder = ['Organize PDF', 'Optimize PDF', 'Convert to PDF', 'Convert from PDF', 'Convert to Document', 'Edit PDF', 'PDF Security', 'Analyze PDF', 'Compress'];
+const toolSectionNames = ['Government', 'Documents', 'Social Media'];
 const orderedCategories = [...categoryOrder, ...new Set(tools.map((tool) => tool.category))]
   .filter((category, index, categories) => categories.indexOf(category) === index);
 const toolGroups = orderedCategories
@@ -22,6 +23,7 @@ export default function Navbar() {
   const toolsToggleRef = useRef(null);
   const location = useLocation();
   const { user, logout } = useAuth();
+  const activeToolSection = new URLSearchParams(location.search).get('section') || 'Government';
 
   useEffect(() => {
     setMenuOpen(false);
@@ -93,6 +95,18 @@ export default function Navbar() {
                 <Link className="pdfpro-all-tools-link" to="/tools" onClick={closeMenus}>Browse all tools</Link>
               </div>
             </div>
+          </div>
+          <div className="pdfpro-tool-section-nav" role="group" aria-label="Tool sections">
+            {toolSectionNames.map((section) => {
+              const active = location.pathname === '/tools' && activeToolSection === section;
+              return <Link
+                key={section}
+                className={`nav-link${active ? ' active' : ''}`}
+                to={`/tools?section=${encodeURIComponent(section)}`}
+                aria-current={active ? 'page' : undefined}
+                onClick={closeMenus}
+              >{section}</Link>;
+            })}
           </div>
           <NavLink className="nav-link" to="/contact" onClick={closeMenus}>Contact</NavLink>
           <NavLink className="nav-link" to="/guides" onClick={closeMenus}>Guides</NavLink>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { FaArrowRight, FaSearch, FaTimes } from 'react-icons/fa';
 import ToolGrid from '../components/tools/ToolGrid.jsx';
 import { useProfile } from '../context/ProfileContext.jsx';
@@ -20,7 +20,9 @@ export default function ToolsPage() {
   const { pendingToolFile } = useProfile();
   const toolsSectionRef = useScrollReveal('.tool-card');
   const [query, setQuery] = useState('');
-  const [activeSection, setActiveSection] = useState('Government');
+  const [searchParams] = useSearchParams();
+  const requestedSection = searchParams.get('section');
+  const activeSection = sections.some(({ name }) => name === requestedSection) ? requestedSection : 'Government';
   const searchTerm = query.trim().toLowerCase();
   const visibleTools = orderedTools.filter((tool) =>
     tool.section === activeSection &&
@@ -54,11 +56,6 @@ export default function ToolsPage() {
     <section ref={toolsSectionRef} className="tools-directory-content container" aria-label="Tool directory">
       {pendingToolFile && <div className="profile-tool-launch-banner" role="status"><strong>{pendingToolFile.name}</strong> is ready from your profile. Choose a tool below and it will load automatically.</div>}
       <div className="tools-filter-row" id="tools-directory-results">
-        <div className="tools-category-filters tools-section-filters" role="group" aria-label="Choose a tool section">
-          {sections.map(({ name }) => <button type="button" key={name} aria-pressed={activeSection === name} onClick={() => { setActiveSection(name); setQuery(''); }}>
-            {name}<span className="tools-section-count">{tools.filter((tool) => tool.section === name).length}</span>
-          </button>)}
-        </div>
         <p className="tools-result-count" role="status">{visibleTools.length} {visibleTools.length === 1 ? 'tool' : 'tools'}</p>
       </div>
       {activeSection === 'Government' && <section className="government-tools-overview" aria-label="Government image tool features">
