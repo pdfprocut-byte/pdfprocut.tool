@@ -24,3 +24,25 @@ test('image compression accepts WebP input and returns a supported JPEG result',
   assert.equal(result.height, 48);
   assert.ok(result.buffer.length > 0);
 });
+
+test('Target KB mode preserves an already-small WebP without transcoding or padding it', async () => {
+  const canvas = createCanvas(64, 48);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#3155a4';
+  context.fillRect(0, 0, 64, 48);
+  const buffer = canvas.toBuffer('image/webp', 90);
+  canvas.width = 0;
+  canvas.height = 0;
+
+  const result = await compressImage({
+    originalname: 'source.webp',
+    mimetype: 'image/webp',
+    buffer,
+    size: buffer.length
+  }, 30 / 1024, 'clear', { mode: 'target', width: 64, height: 48 });
+
+  assert.equal(result.type, 'image/webp');
+  assert.deepEqual(result.buffer, buffer);
+  assert.equal(result.targetMet, false);
+  assert.match(result.warning, /no filler data was added/i);
+});

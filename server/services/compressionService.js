@@ -4,6 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { unzipSync, zipSync } from 'fflate';
 import { extname } from 'node:path';
 import { ApiError } from '../utils/ApiError.js';
+import { findImageEncoding, getImageTargetToleranceBytes, MAX_IMAGE_QUALITY, MIN_IMAGE_QUALITY } from '../../shared/imageTargetEncoder.mjs';
 
 const maxPages = 100;
 const maxPixelsPerPdfPage = 4_000_000;
@@ -287,6 +288,8 @@ export async function compressFile(file, targetSizeMb, quality = 'clear', option
 
 export async function compressImage(file, targetSizeMb, quality = 'clear', requestedDimensions = {}) {
   if (!['clear', 'balanced', 'smallest'].includes(quality)) throw new ApiError(400, 'Choose clear, balanced, or smallest compression quality');
+  const mode = requestedDimensions.mode || 'maximum';
+  if (!['maximum', 'target'].includes(mode)) throw new ApiError(400, 'Choose Maximum KB or Target KB compression mode');
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) throw new ApiError(415, 'Image compression accepts JPG, PNG, and WebP files');
   const extension = extname(file.originalname || '').slice(1).toLowerCase();
   const expectedType = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[extension];
@@ -311,80 +314,78 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
   const resized = width !== dimensions.width || height !== dimensions.height;
   const targetBytes = Math.round(targetSizeMb * 1024 * 1024);
   const sourceType = file.mimetype;
-  const type = sourceType === 'image/webp' || (sourceType === 'image/png' && file.buffer.length > targetBytes) ? 'image/jpeg' : sourceType;
-  if (!resized && sourceType !== 'image/webp' && file.buffer.length <= targetBytes) {
-    return { buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height };
+  const type = mode === 'target' || sourceType === 'image/webp' || (sourceType === 'image/png' && file.buffer.length > targetBytes) ? 'image/jpeg' : sourceType;
+  if (!resized && file.buffer.length <= targetBytes && (sourceType !== 'image/webp' || mode === 'target')) {
+    const toleranceBytes = mode === 'target' ? getImageTargetToleranceBytes(targetBytes) : 0;
+    const targetMet = mode === 'maximum' || file.buffer.length >= targetBytes - toleranceBytes;
+    return {
+      buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height,
+      quality: null, targetMet, targetBytes, differenceBytes: file.buffer.length - targetBytes,
+      toleranceBytes,
+      dimensionAdjusted: false,
+      warning: mode === 'target' && !targetMet
+        ? `This image naturally encodes to ${file.buffer.length.toLocaleString()} bytes at the selected dimensions. The requested target is ${targetBytes.toLocaleString()} bytes; no filler data was added.`
+        : ''
+    };
   }
 
   if (!image) {
     try { image = await loadImage(Buffer.from(file.buffer)); }
     catch { throw new ApiError(415, `Could not decode this ${extension.toUpperCase()} image`); }
   }
-  const qualityLevels = type === 'image/png'
-    ? [100]
-    : quality === 'clear'
-      ? [100, 96, 92, 88, 84, 80]
-      : quality === 'balanced'
-        ? [96, 90, 84, 78, 72, 66, 60]
-        : [92, 84, 76, 68, 60, 52, 44, 36];
-  const scaleLevels = quality === 'clear'
-    ? [1, 0.97, 0.94, 0.91, 0.88, 0.85, 0.8, 0.75, 0.7]
-    : quality === 'balanced'
-      ? [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.6]
-      : [1, 0.9, 0.8, 0.7, 0.6, 0.5];
-
-  let bestReduced = null;
-  let bestReducedScore = -1;
-  let bestReducedDimensions = null;
-  let bestFit = null;
-  let bestFitScore = -1;
-  let bestFitDimensions = null;
-  let bestRequestedSize = null;
-  let bestRequestedScore = -1;
-  for (const scale of scaleLevels) {
-    if (scale <= bestFitScore) break;
-    const outputWidth = Math.max(1, Math.round(width * scale));
-    const outputHeight = Math.max(1, Math.round(height * scale));
-    const canvas = createCanvas(outputWidth, outputHeight);
-    const context = canvas.getContext('2d');
-    if (type === 'image/jpeg') { context.fillStyle = '#ffffff'; context.fillRect(0, 0, outputWidth, outputHeight); }
-    context.drawImage(image, 0, 0, outputWidth, outputHeight);
-
-    for (const encoderQuality of qualityLevels) {
-      const score = scale * encoderQuality / 100;
-      if (score <= bestFitScore) continue;
-      let candidate;
-      try {
-        candidate = Buffer.from(type === 'image/png'
-          ? canvas.toBuffer('image/png')
-          : canvas.toBuffer(type, encoderQuality));
-      } catch {
-        canvas.width = 0;
-        canvas.height = 0;
-        throw new ApiError(422, 'Could not encode the compressed image');
+  const modeMaxQuality = { clear: MAX_IMAGE_QUALITY, balanced: 88, smallest: 75 }[quality];
+  const minQuality = type === 'image/png' ? 100 : MIN_IMAGE_QUALITY;
+  const maxQuality = type === 'image/png' ? 100 : modeMaxQuality;
+  let canvas = null;
+  let canvasWidth = 0;
+  let canvasHeight = 0;
+  try {
+    const encoded = await findImageEncoding({
+      width,
+      height,
+      targetBytes,
+      mode,
+      minQuality,
+      maxQuality,
+      allowDimensionAdjustment: Boolean(requestedDimensions.allowDimensionAdjustment),
+      dimensionSearchSteps: 10,
+      encode: ({ width: outputWidth, height: outputHeight, quality: encoderQuality }) => {
+        if (!canvas || canvasWidth !== outputWidth || canvasHeight !== outputHeight) {
+          if (canvas) { canvas.width = 0; canvas.height = 0; }
+          canvas = createCanvas(outputWidth, outputHeight);
+          canvasWidth = outputWidth;
+          canvasHeight = outputHeight;
+          const context = canvas.getContext('2d');
+          if (type === 'image/jpeg') { context.fillStyle = '#ffffff'; context.fillRect(0, 0, outputWidth, outputHeight); }
+          context.drawImage(image, 0, 0, outputWidth, outputHeight);
+        }
+        try {
+          const buffer = Buffer.from(type === 'image/png'
+            ? canvas.toBuffer('image/png')
+            : canvas.toBuffer('image/jpeg', encoderQuality));
+          return { buffer, size: buffer.length };
+        } catch {
+          throw new ApiError(422, 'Could not encode the compressed image');
+        }
       }
-      if (scale === 1 && score > bestRequestedScore) {
-        bestRequestedSize = candidate;
-        bestRequestedScore = score;
-      }
-      if (candidate.length < file.buffer.length && score > bestReducedScore) {
-        bestReduced = candidate;
-        bestReducedScore = score;
-        bestReducedDimensions = { width: outputWidth, height: outputHeight };
-      }
-      if (candidate.length <= targetBytes && score > bestFitScore) {
-        bestFit = candidate;
-        bestFitScore = score;
-        bestFitDimensions = { width: outputWidth, height: outputHeight };
-      }
-    }
-    canvas.width = 0;
-    canvas.height = 0;
+    });
+    if (!encoded) throw new ApiError(422, requestedDimensions.allowDimensionAdjustment
+      ? 'Could not fit this image under the selected maximum at acceptable quality. Increase the maximum or choose smaller output dimensions.'
+      : 'Could not fit this image under the selected maximum at acceptable quality. Increase the maximum or enable automatic dimension adjustment.');
+    return {
+      buffer: encoded.buffer,
+      type,
+      width: encoded.width,
+      height: encoded.height,
+      quality: type === 'image/jpeg' ? encoded.quality : null,
+      targetMet: encoded.targetMet,
+      targetBytes: encoded.targetBytes,
+      differenceBytes: encoded.differenceBytes,
+      toleranceBytes: encoded.toleranceBytes,
+      dimensionAdjusted: encoded.dimensionAdjusted,
+      warning: encoded.warning
+    };
+  } finally {
+    if (canvas) { canvas.width = 0; canvas.height = 0; }
   }
-  const buffer = bestFit || bestReduced || bestRequestedSize || file.buffer;
-  const outputDimensions = bestFitDimensions || bestReducedDimensions || { width, height };
-  if (buffer.length > targetBytes) {
-    throw new ApiError(422, 'Could not fit this image under the selected maximum at the chosen dimensions and clarity. Choose a larger maximum or reduce the output dimensions.');
-  }
-  return { buffer, type, width: outputDimensions.width, height: outputDimensions.height };
 }

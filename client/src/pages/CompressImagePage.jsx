@@ -43,13 +43,15 @@ async function normalizeImageForServer(file) {
   }
 }
 
-async function submitImage(file, targetSizeMb, quality, dimensions) {
+async function submitImage(file, targetSizeMb, quality, dimensions, mode, allowDimensionAdjustment) {
   const body = new FormData();
   body.append('files', file);
   body.append('targetSizeMb', String(targetSizeMb));
   body.append('quality', quality);
   body.append('width', String(dimensions.width));
   body.append('height', String(dimensions.height));
+  body.append('mode', mode);
+  body.append('allowDimensionAdjustment', String(allowDimensionAdjustment));
   const response = await fetch(`${apiBase}/image/compress`, { method: 'POST', body, credentials: 'include' });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
@@ -63,6 +65,8 @@ async function submitImage(file, targetSizeMb, quality, dimensions) {
 export default function CompressImagePage({ tool }) {
   const [file, setFile] = useState(null);
   const [targetChoice, setTargetChoice] = useState('0.09765625');
+  const [compressionMode, setCompressionMode] = useState('maximum');
+  const [allowDimensionAdjustment, setAllowDimensionAdjustment] = useState(false);
   const [customTarget, setCustomTarget] = useState('1.5');
   const [targetUnit, setTargetUnit] = useState('MB');
   const [quality, setQuality] = useState('clear');
@@ -71,7 +75,7 @@ export default function CompressImagePage({ tool }) {
   const [maintainAspectRatio, setMaintainAspectRatio] = useState(true);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
-  const draft = { state: { targetChoice, customTarget, targetUnit, quality, dimensions, maintainAspectRatio }, files: file ? [file] : [], signature: null };
+  const draft = { state: { targetChoice, customTarget, targetUnit, quality, dimensions, maintainAspectRatio, compressionMode, allowDimensionAdjustment }, files: file ? [file] : [], signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(`tool:${tool.slug}`, draft, (saved) => {
     setFile(saved.files[0] || null);
     if (saved.state?.targetChoice) setTargetChoice(saved.state.targetChoice);
@@ -86,6 +90,8 @@ export default function CompressImagePage({ tool }) {
       setTargetUnit(saved.state.targetUnit);
     }
     if (saved.state?.quality) setQuality(saved.state.quality);
+    if (['maximum', 'target'].includes(saved.state?.compressionMode)) setCompressionMode(saved.state.compressionMode);
+    if (saved.state?.allowDimensionAdjustment !== undefined) setAllowDimensionAdjustment(saved.state.allowDimensionAdjustment);
     if (saved.state?.dimensions) setDimensions(saved.state.dimensions);
     if (saved.state?.maintainAspectRatio !== undefined) setMaintainAspectRatio(saved.state.maintainAspectRatio);
   });
@@ -167,11 +173,11 @@ export default function CompressImagePage({ tool }) {
     try {
       let response;
       try {
-        response = await submitImage(file, targetSizeMb, quality, { width, height });
+        response = await submitImage(file, targetSizeMb, quality, { width, height }, compressionMode, allowDimensionAdjustment);
       } catch (error) {
         if (error.status !== 415 || !/Could not decode this JPG or PNG image/i.test(error.message)) throw error;
         const normalizedFile = await normalizeImageForServer(file);
-        response = await submitImage(normalizedFile, targetSizeMb, quality, { width, height });
+        response = await submitImage(normalizedFile, targetSizeMb, quality, { width, height }, compressionMode, allowDimensionAdjustment);
       }
       const blob = await response.blob();
       const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
@@ -180,10 +186,16 @@ export default function CompressImagePage({ tool }) {
         name: createDownloadName(file, extension),
         originalSize: file.size,
         outputSize: blob.size,
+        targetBytes: Math.round(targetSizeMb * 1024 * 1024),
         compressionPercent: file.size ? ((file.size - blob.size) / file.size) * 100 : 0,
         outputWidth: Number(response.headers.get('X-Output-Width')) || width,
         outputHeight: Number(response.headers.get('X-Output-Height')) || height,
         targetMet: response.headers.get('X-Target-Met') === 'true',
+        targetDifference: Number(response.headers.get('X-Target-Difference')),
+        outputQuality: response.headers.get('X-Output-Quality') ? Number(response.headers.get('X-Output-Quality')) : null,
+        compressionWarning: response.headers.get('X-Compression-Warning') || '',
+        dimensionAdjusted: response.headers.get('X-Dimension-Adjusted') === 'true',
+        compressionMode,
         quality
       });
       toast.success('Compressed image is ready');
@@ -199,9 +211,9 @@ export default function CompressImagePage({ tool }) {
   return <main className="container py-5 tool-page">
     <Link to="/tools" className="back">← All tools</Link>
     <h2>{tool.name}</h2>
-    <p className="lead">Resize a JPG, PNG, or WebP image and keep it within a selected maximum file size.</p>
+    <p className="lead">Resize a JPG, PNG, or WebP image to fit a strict maximum or aim for a requested file size.</p>
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    <div className="alert alert-info" role="note">The compressor chooses the clearest result it can fit under your maximum. If the image cannot fit without more quality loss, the tool reports that instead of enlarging the file. A PNG larger than the target may be saved as JPEG, so transparent areas become white.</div>
+    <div className="alert alert-info" role="note">Maximum KB keeps the clearest result at or below the size limit. Target KB searches actual JPEG encodings for a result within 5% (capped at 1 KB) below the requested size. If a small or simple image naturally encodes below that range, it stays at high quality and the tool reports that the target was not reached. It never adds filler bytes. A PNG may be saved as JPEG, so transparent areas become white.</div>
     <FileUploader tool={tool} onFiles={selectFile}/>
     {file && <UploadedFileList files={file}/>}
     {file && <section className="image-compress-dimensions" aria-labelledby="image-compress-dimensions-title">
@@ -216,20 +228,26 @@ export default function CompressImagePage({ tool }) {
       <label className="image-compress-aspect-toggle"><input type="checkbox" checked={maintainAspectRatio} onChange={(event) => toggleAspectRatio(event.target.checked)}/> Maintain aspect ratio</label>
       <small className="image-compress-dimension-hint">Maximum output dimensions: 40 megapixels total.</small>
     </section>}
-    <label className="mt-3">Maximum output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
+    <label className="mt-3">Requested output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
         {targetOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
     </label>
     {targetChoice === 'custom' && <div className="image-compress-custom-target mt-3">
-      <label htmlFor="image-compress-target-value">Custom maximum size</label>
+      <label htmlFor="image-compress-target-value">Custom size</label>
       <div className="input-group">
         <input id="image-compress-target-value" className="form-control" type="number" min={customTargetMin} max={customTargetMax} step="any" value={customTarget} onChange={(event) => setCustomTarget(event.target.value)}/>
         <select className="form-select" aria-label="Custom target unit" value={targetUnit} onChange={(event) => changeTargetUnit(event.target.value)}>
           <option value="KB">KB</option><option value="MB">MB</option>
         </select>
       </div>
-      <small>Enter a maximum from 1 KB to 25 MB.</small>
+      <small>Enter a size from 1 KB to 25 MB.</small>
     </div>}
+    <label className="mt-3">Compression mode<select className="form-select" value={compressionMode} onChange={(event) => setCompressionMode(event.target.value)}>
+      <option value="maximum">Maximum KB Mode</option>
+      <option value="target">Target KB Mode</option>
+    </select><small>{compressionMode === 'maximum' ? 'The output will not exceed the requested size.' : 'The tool aims for the selected size without adding metadata or padding.'}</small></label>
+    <label className="image-compress-aspect-toggle mt-3"><input type="checkbox" checked={allowDimensionAdjustment} onChange={(event) => setAllowDimensionAdjustment(event.target.checked)}/> Automatically reduce dimensions if needed to reach the size</label>
+    <small className="image-compress-dimension-hint">Off by default: output dimensions remain as selected. Automatic reduction preserves the aspect ratio.</small>
     <label className="mt-3">Image clarity<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
         <option value="clear">High clarity (recommended)</option>
         <option value="balanced">Balanced</option>
@@ -243,9 +261,11 @@ export default function CompressImagePage({ tool }) {
     <DownloadResultModal href={result?.url} fileName={result?.name} toolSlug={tool.slug} title="PDF Pro Cut compressed your image" downloadLabel="Download compressed image" onClose={() => setResult(null)}>
       {result && <>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
-          {result.targetMet ? `Maximum met: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Maximum not met. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
-          {' '}Original: {formatSize(result.originalSize)}; {Math.abs(result.compressionPercent).toFixed(1)}% {result.compressionPercent >= 0 ? 'smaller' : 'larger'} output. Output: {result.outputWidth} × {result.outputHeight} px.
+          Requested: {(result.targetBytes / 1024).toFixed(1)} KB; actual: {(result.outputSize / 1024).toFixed(1)} KB ({result.outputSize.toLocaleString()} bytes); difference: {result.targetDifference > 0 ? '+' : ''}{(result.targetDifference / 1024).toFixed(1)} KB.
+          {' '}Mode: {result.compressionMode === 'maximum' ? 'Maximum KB' : 'Target KB'}; image quality: {result.outputQuality == null ? 'original encoding preserved' : `${result.outputQuality}%`}; {result.targetMet ? 'target achieved' : 'target not achieved'}.
+          {' '}Original: {formatSize(result.originalSize)}; {Math.abs(result.compressionPercent).toFixed(1)}% {result.compressionPercent >= 0 ? 'smaller' : 'larger'} output. Output: {result.outputWidth} × {result.outputHeight} px{result.dimensionAdjusted ? ' (dimensions automatically reduced)' : ''}.
         </p>
+        {result.compressionWarning && <p className="alert alert-warning" role="status">{result.compressionWarning}</p>}
       </>}
     </DownloadResultModal>
   </main>;
