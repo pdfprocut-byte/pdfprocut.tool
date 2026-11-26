@@ -6,6 +6,7 @@ import { DownloadResultModal, OperationProgressModal } from '../components/pdf/F
 import { createDownloadName } from '../utils/downloadName.js';
 import UploadedFileList from '../components/pdf/UploadedFileList.jsx';
 import { useBrowserDraft } from '../lib/browserDraft.js';
+import '../styles/compressionWarnings.css';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const PdfPagePreview = lazy(() => import('../components/pdf/PdfPagePreview.jsx'));
@@ -15,6 +16,7 @@ const targetOptions = [
 ];
 const unitToMb = { KB: 1 / 1024, MB: 1 };
 const formatSize = (bytes) => bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(0)} KB` : `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+const formatCompressionError = (message) => String(message).replace(/([\d,]+)\s+bytes?/gi, (_match, value) => formatSize(Number(value.replaceAll(',', ''))));
 
 export default function CompressFilesPage({ tool }) {
   const [file, setFile] = useState(null);
@@ -25,6 +27,7 @@ export default function CompressFilesPage({ tool }) {
   const [allowRasterization, setAllowRasterization] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const draft = { state: { targetChoice, customTarget, customTargetUnit, quality, allowRasterization }, files: file ? [file] : [], signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(`tool:${tool.slug}`, draft, (saved) => {
     setFile(saved.files[0] || null);
@@ -52,8 +55,9 @@ export default function CompressFilesPage({ tool }) {
   };
 
   const compress = async () => {
-    if (!file) return toast.error('Select a file first');
-    if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) return toast.error('Choose a maximum size between 1 KB and 25 MB');
+    setErrorMessage('');
+    if (!file) return setErrorMessage('Select a file first.');
+    if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) return setErrorMessage('Choose a maximum size between 1 KB and 25 MB.');
     setBusy(true);
     setResult(null);
     try {
@@ -82,7 +86,7 @@ export default function CompressFilesPage({ tool }) {
       });
       toast.success('Compressed file is ready');
     } catch (error) {
-      toast.error(error.message || 'Could not compress this file');
+      setErrorMessage(formatCompressionError(error.message || 'Could not compress this file.'));
     } finally {
       setBusy(false);
     }
@@ -97,17 +101,17 @@ export default function CompressFilesPage({ tool }) {
     {tool.gov?.kind === 'pdf-compress' && <p className="government-tool-local-note" role="note">This document is sent to the PDF Pro Cut server for compression. Confirm the current application limit and review the compressed file before submitting it.</p>}
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
     <div className="alert alert-warning" role="note">Compression keeps the original unchanged and reports the actual output size. PDF optimization preserves selectable text and page dimensions by default, so some PDFs may not shrink enough to meet a very small limit.</div>
-    <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); }}/>
+    <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); setErrorMessage(''); }}/>
     {file && <UploadedFileList files={file}/>}
     {file && isPdf && <section className="compression-preview-panel" aria-label="Original PDF preview"><h3>Original PDF preview</h3><Suspense fallback={<p role="status">Loading PDF preview…</p>}><PdfPagePreview file={file} selectedPages={[]} interactive={false}/></Suspense></section>}
-    {isPdf && <label className="compression-image-only-option"><input type="checkbox" checked={allowRasterization} onChange={(event) => setAllowRasterization(event.target.checked)}/> Allow image-based compression to reduce the PDF further</label>}
+    {isPdf && <label className="compression-image-only-option"><input type="checkbox" checked={allowRasterization} onChange={(event) => { setAllowRasterization(event.target.checked); setErrorMessage(''); }}/> Allow image-based compression to reduce the PDF further</label>}
     {isPdf && allowRasterization && <p className="small text-secondary">Pages are saved as images. Text will no longer be selectable or searchable, and links, fields, comments, and other interactive content may not be preserved. PDFs with digital signatures, rotated pages, or cropped page bounds are not supported.</p>}
-    <label className="mt-3">Maximum output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
+    <label className="mt-3">Maximum output size<select className="form-select" value={targetChoice} onChange={(event) => { setTargetChoice(event.target.value); setErrorMessage(''); }}>
         {targetOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
       <small className="text-secondary">This is a maximum, not an exact target. A file already below it stays unchanged.</small>
     </label>
-    {(!isPdf || allowRasterization) && <label className="mt-3">Compression quality<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
+    {(!isPdf || allowRasterization) && <label className="mt-3">Compression quality<select className="form-select" value={quality} onChange={(event) => { setQuality(event.target.value); setErrorMessage(''); }}>
         <option value="clear">High clarity first</option>
         <option value="balanced">Balanced</option>
         <option value="smallest">Smallest size (lower clarity)</option>
@@ -116,12 +120,19 @@ export default function CompressFilesPage({ tool }) {
     {targetChoice === 'custom' && <div className="mt-3">
       <label htmlFor="document-compression-target">Custom maximum size</label>
       <div className="input-group">
-        <input id="document-compression-target" className="form-control" type="number" min={customTargetUnit === 'KB' ? 1 : 1 / 1024} max={customTargetUnit === 'KB' ? 25600 : 25} step={customTargetUnit === 'KB' ? 1 : 0.01} value={customTarget} onChange={(event) => setCustomTarget(event.target.value)}/>
-        <select className="form-select" aria-label="Custom target size unit" value={customTargetUnit} onChange={(event) => changeCustomTargetUnit(event.target.value)}>
+        <input id="document-compression-target" className="form-control" type="number" min={customTargetUnit === 'KB' ? 1 : 1 / 1024} max={customTargetUnit === 'KB' ? 25600 : 25} step={customTargetUnit === 'KB' ? 1 : 0.01} value={customTarget} onChange={(event) => { setCustomTarget(event.target.value); setErrorMessage(''); }}/>
+        <select className="form-select" aria-label="Custom target size unit" value={customTargetUnit} onChange={(event) => { changeCustomTargetUnit(event.target.value); setErrorMessage(''); }}>
           <option value="KB">KB</option><option value="MB">MB</option>
         </select>
       </div>
       <small className="text-secondary">Choose a maximum from 1 KB to 25 MB.</small>
+    </div>}
+    {errorMessage && <div className="compression-error-panel" role="alert">
+      <div className="compression-error-heading">
+        <strong>Warning</strong>
+        <button type="button" aria-label="Dismiss warning" onClick={() => setErrorMessage('')}>×</button>
+      </div>
+      <p>{errorMessage}</p>
     </div>}
     <button className="btn btn-primary mt-4" type="button" onClick={compress} disabled={busy || !file}>
       {busy ? 'Compressing…' : 'Compress file'}
@@ -131,7 +142,7 @@ export default function CompressFilesPage({ tool }) {
     <DownloadResultModal href={result?.url} fileName={result?.name} toolSlug={tool.slug} title="PDF Pro Cut compressed your file" downloadLabel="Download compressed file" onClose={() => setResult(null)}>
       {result && <>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
-          {result.targetMet ? `Maximum met: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Maximum not met. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
+          {result.targetMet ? `Maximum met: ${formatSize(result.outputSize)}.` : `Maximum not met. Best result: ${formatSize(result.outputSize)}.`}
           {' '}Original: {formatSize(result.originalSize)}; {Math.abs(result.compressionPercent).toFixed(1)}% {result.compressionPercent >= 0 ? 'smaller' : 'larger'} output.
         </p>
         {result.rasterized && <p className="small text-warning">This PDF was saved as page images. Text is no longer selectable or searchable.</p>}

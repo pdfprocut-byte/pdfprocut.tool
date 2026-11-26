@@ -1,0 +1,48 @@
+.compression-error-panel {
+  margin: 1rem 0 0;
+  padding: .9rem 1rem;
+  border: 1px solid #f2b8b5;
+  border-left: 4px solid #c62828;
+  border-radius: 10px;
+  background: #fff6f5;
+  box-shadow: 0 5px 16px #7f1d1d0d;
+}
+
+.compression-error-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .3rem;
+  color: #b42318;
+  font-size: 1rem;
+}
+
+.compression-error-heading button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #a61b1b;
+  font: inherit;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.compression-error-heading button:hover,
+.compression-error-heading button:focus-visible {
+  background: #fee2e2;
+}
+
+.compression-error-panel p {
+  margin: 0;
+  color: #633b3b;
+  font-size: .92rem;
+  line-height: 1.5;
+}
