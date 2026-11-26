@@ -39,7 +39,6 @@ const iconBySlug = {
   'psc-thumb-impression-resizer': FaIdCard,
   'ssc-photo-resizer': FaCamera,
   'ssc-signature-resizer': FaStamp,
-  'ssc-live-photo-editor': FaCamera,
   'ssc-photo-compressor': FaCompress,
   'ssc-signature-compressor': FaCompress,
   'upsc-photo-resizer': FaCamera,

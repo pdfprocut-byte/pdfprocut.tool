@@ -10,15 +10,15 @@ const requiredToolSlugs = [
   'air-force-photo-resizer', 'government-application-signature-maker',
   'passport-size-photo-maker', 'government-id-photo-maker', 'certificate-photo-resizer', 'document-kb-compressor',
   'document-dpi-changer', 'signature-background-remover',
-  'ssc-photo-resizer', 'ssc-signature-resizer', 'ssc-live-photo-editor', 'ssc-photo-compressor', 'ssc-signature-compressor',
+  'ssc-photo-resizer', 'ssc-signature-resizer', 'ssc-photo-compressor', 'ssc-signature-compressor',
   'upsc-photo-resizer', 'upsc-signature-resizer', 'upsc-document-resizer', 'upsc-photo-compressor',
   'rrb-photo-resizer', 'rrb-signature-resizer', 'rrb-thumb-impression-resizer', 'rrb-document-compressor',
   'aadhaar-photo-resizer', 'pan-card-photo-resizer', 'aadhaar-pdf-compressor', 'pan-document-compressor'
 ];
 
-test('all 36 government tools use the shared image or document processing routes', () => {
+test('all 35 government tools use the shared image or document processing routes', () => {
   const governmentTools = toolCatalog.filter((tool) => tool.gov && tool.category !== 'Social Media');
-  assert.equal(governmentTools.length, 36);
+  assert.equal(governmentTools.length, 35);
   assert.deepEqual(governmentTools.map(({ slug }) => slug).sort(), [...requiredToolSlugs].sort());
   for (const tool of governmentTools) {
     assert.ok(['government-image', 'compress'].includes(tool.endpoint), `${tool.slug} has a working custom route`);

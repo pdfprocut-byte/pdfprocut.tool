@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
 import { createPassportPrintSheet } from '../lib/passportPrintSheet.js';
+import { createDownloadName } from '../utils/downloadName.js';
 import { findImageEncoding, getImageTargetToleranceBytes, MAX_IMAGE_QUALITY, MIN_IMAGE_QUALITY } from '../../../shared/imageTargetEncoder.mjs';
 import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
 import '../styles/governmentImageTools.css';
@@ -408,16 +409,12 @@ export default function GovernmentImageToolPage({ tool }) {
   const [printHeightMm, setPrintHeightMm] = useState('45');
   const [printSheetResult, setPrintSheetResult] = useState(null);
   const [printSheetBusy, setPrintSheetBusy] = useState(false);
-  const [cameraStream, setCameraStream] = useState(null);
-  const [cameraError, setCameraError] = useState('');
-  const videoRef = useRef(null);
   const objectUrls = useRef(new Set());
   const activePresetForSlot = (slot) => presetMode === 'custom' && !socialMediaTool ? null : presetForSlot(slot);
   const removeBackground = config.kind === 'remove-background';
   const replaceBackground = config.kind === 'white-background';
   const compression = config.kind === 'compress';
   const dpiMode = config.kind === 'dpi';
-  const hasCamera = config.kind === 'live-photo';
   const basePreset = presetForSlot(slots[0].key);
   const currentPreset = activePresetForSlot(slots[0].key);
   const currentGuidance = governmentToolGuidanceByTool[tool.slug];
@@ -524,43 +521,7 @@ export default function GovernmentImageToolPage({ tool }) {
     });
   };
 
-  useEffect(() => {
-    if (!cameraStream) return undefined;
-    const video = videoRef.current;
-    if (video) video.srcObject = cameraStream;
-    return () => {
-      cameraStream.getTracks().forEach((track) => track.stop());
-      if (video?.srcObject === cameraStream) video.srcObject = null;
-    };
-  }, [cameraStream]);
   useEffect(() => () => objectUrls.current.forEach((url) => URL.revokeObjectURL(url)), []);
-
-  const startCamera = async () => {
-    setCameraError('');
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is not available in this browser or page context.');
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
-      setCameraStream(stream);
-    } catch (error) {
-      setCameraError(error.message || 'Could not access the camera.');
-    }
-  };
-  const stopCamera = () => {
-    cameraStream?.getTracks().forEach((track) => track.stop());
-    setCameraStream(null);
-  };
-  const capturePhoto = () => {
-    const video = videoRef.current;
-    if (!video?.videoWidth || !video?.videoHeight) return toast.error('Wait until the camera preview is ready.');
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-    canvas.getContext('2d')?.drawImage(video, 0, 0);
-    canvasBlob(canvas, 'image/jpeg', 0.95).then((blob) => {
-      selectFile(slots[0].key, new File([blob], 'live-photo.jpg', { type: 'image/jpeg' }));
-      stopCamera();
-      canvas.width = 0; canvas.height = 0;
-    }).catch((error) => toast.error(error.message));
-  };
 
   const createPrintSheet = async () => {
     const photo = results[0];
@@ -571,7 +532,7 @@ export default function GovernmentImageToolPage({ tool }) {
     try {
       const blob = await createPassportPrintSheet(photo.blob, photo.width, photo.height, printCopies, widthMm, heightMm);
       if (printSheetResult?.url) { URL.revokeObjectURL(printSheetResult.url); objectUrls.current.delete(printSheetResult.url); }
-      const name = `${tool.slug}-a4-print-sheet.pdf`;
+      const name = createDownloadName(files.image, 'pdf', 'a4-print-sheet');
       const url = makeObjectUrl(blob);
       setPrintSheetResult({ blob, name, url });
       toast.success('A4 print sheet is ready.');
@@ -634,9 +595,8 @@ export default function GovernmentImageToolPage({ tool }) {
         });
         const targetBytes = targetKb ? Math.round(requestedKb * 1024) : null;
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
-        const baseName = files[slot.key].name.replace(/\.[^.]+$/, '') || 'image';
         nextResults.push({
-          name: `${baseName}-${tool.slug}.${extension}`,
+          name: createDownloadName(files[slot.key], extension, pair ? `${tool.slug}-${slot.key}` : tool.slug),
           url: makeObjectUrl(output.blob),
           slotLabel: slot.label,
           blob: output.blob,
@@ -705,15 +665,6 @@ export default function GovernmentImageToolPage({ tool }) {
       })}
     </div>
 
-    {hasCamera && <section className="government-camera" aria-labelledby="government-camera-title">
-      <h2 id="government-camera-title">Live camera</h2>
-      {!cameraStream ? <button className="btn btn-outline-primary" type="button" onClick={startCamera}>Open camera</button> : <>
-        <video ref={videoRef} autoPlay playsInline muted aria-label="Live camera preview"/>
-        <div className="government-camera-actions"><button className="btn btn-primary" type="button" onClick={capturePhoto}>Capture photo</button><button className="btn btn-outline-secondary" type="button" onClick={stopCamera}>Close camera</button></div>
-      </>}
-      {cameraError && <p className="text-danger" role="alert">{cameraError}</p>}
-      <p className="small text-secondary">Camera access requires your browser's permission and a secure page connection.</p>
-    </section>}
       </div>
 
       <div className="government-tool-control-column">

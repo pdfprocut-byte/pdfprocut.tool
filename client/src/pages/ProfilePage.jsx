@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useProfile } from '../context/ProfileContext.jsx';
 import SavedDocumentThumbnail from '../components/pdf/SavedDocumentThumbnail.jsx';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.jsx';
+import { createDownloadName } from '../utils/downloadName.js';
 import '../styles/profile.css';
 
 async function makeProfilePhoto(file) {
@@ -185,7 +186,7 @@ export default function ProfilePage() {
       const url = URL.createObjectURL(blob);
       const anchor = window.document.createElement('a');
       anchor.href = url;
-      anchor.download = document.name;
+      anchor.download = createDownloadName({ name: document.name }, document.name.match(/\.([^.]+)$/)?.[1] || 'file');
       window.document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();

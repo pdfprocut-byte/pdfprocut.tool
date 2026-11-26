@@ -12,6 +12,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import CharacterCount from '@tiptap/extension-character-count';
 import FontFamily from '@tiptap/extension-font-family';
 import { apiRequest, apiBaseUrl, getCsrfToken } from '../lib/authApi.js';
+import { createDownloadName } from '../utils/downloadName.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import {
   FaAlignCenter, FaAlignJustify, FaAlignLeft, FaAlignRight, FaArrowUp,
@@ -235,7 +236,7 @@ export default function WordEditorPage() {
       const response = await fetch(`${apiBaseUrl}/documents/${active.id}/export/docx`, { credentials: 'include' });
       if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || 'DOCX export failed.'); }
       const url = URL.createObjectURL(await response.blob());
-      const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${title.trim() || 'document'}.docx`; anchor.click(); URL.revokeObjectURL(url);
+      const anchor = document.createElement('a'); anchor.href = url; anchor.download = createDownloadName({ name: title.trim() || 'document' }, 'docx'); anchor.click(); URL.revokeObjectURL(url);
       toast.success('DOCX downloaded.');
     } catch (error) { toast.error(error.message); }
   };

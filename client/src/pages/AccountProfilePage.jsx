@@ -6,6 +6,7 @@ import { useProfile } from '../context/ProfileContext.jsx';
 import { authRequest } from '../lib/authApi.js';
 import SavedDocumentThumbnail from '../components/pdf/SavedDocumentThumbnail.jsx';
 import ConfirmActionDialog from '../components/ConfirmActionDialog.jsx';
+import { createDownloadName } from '../utils/downloadName.js';
 import '../styles/accountProfile.css';
 import '../styles/accountDashboard.css';
 
@@ -111,7 +112,7 @@ export default function AccountProfilePage() {
       const url = URL.createObjectURL(blob);
       const anchor = window.document.createElement('a');
       anchor.href = url;
-      anchor.download = document.name;
+      anchor.download = createDownloadName({ name: document.name }, document.name.match(/\.([^.]+)$/)?.[1] || 'file');
       window.document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();

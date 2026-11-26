@@ -151,7 +151,7 @@ export function DownloadResultModal({ href, fileName, toolSlug, title = 'PDF Pro
       const response = await fetch(href);
       if (!response.ok) throw new Error('Could not open the completed file. Please download it and try again.');
       const blob = await response.blob();
-      const file = new File([blob], fileName || `fileprocut.${extension || 'file'}`, {
+      const file = new File([blob], fileName || `pdfprocut.${extension || 'file'}`, {
         type: blob.type || fallbackMimeTypes[extension] || 'application/octet-stream'
       });
       setPendingToolFile(file);

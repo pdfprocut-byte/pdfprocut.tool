@@ -230,7 +230,6 @@ export const governmentPresetByTool = {
   'psc-signature-kb-compressor': 'keralaPscSignature',
   'psc-thumb-impression-resizer': 'keralaPscSignature',
   'psc-photo-signature-maker': 'keralaPscPhoto',
-  'ssc-live-photo-editor': 'sscLivePhoto',
   'ssc-photo-resizer': 'sscLivePhoto',
   'ssc-photo-compressor': 'sscLivePhoto',
   'ssc-signature-resizer': 'sscSignature',

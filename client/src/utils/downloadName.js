@@ -15,16 +15,17 @@ function baseName(name) {
 
 function buildDownloadName(originalName, extension, suffix) {
   const original = baseName(originalName);
-  const safeSuffix = cleanPart(suffix, 'fileprocut');
+  const safeSuffix = cleanPart(suffix, 'pdfprocut');
+  const operationSuffix = safeSuffix.toLowerCase() === 'pdfprocut' ? '' : `-${safeSuffix}`;
   const safeExtension = String(extension || '').replace(/^\./, '').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'file';
-  return `${original}-${safeSuffix}.${safeExtension}`;
+  return `${original}${operationSuffix}-pdfprocut.${safeExtension}`;
 }
 
-export function createDownloadName(file, extension, suffix = 'fileprocut') {
+export function createDownloadName(file, extension, suffix = 'pdfprocut') {
   return buildDownloadName(file?.name, extension, suffix);
 }
 
-export function createMergeDownloadName(files, extension = 'pdf', suffix = 'fileprocut') {
+export function createMergeDownloadName(files, extension = 'pdf', suffix = 'pdfprocut') {
   const inputFiles = Array.isArray(files) ? files : [];
   const firstName = baseName(inputFiles[0]?.name);
   const mergedName = inputFiles.length > 1 ? `${firstName}-and-${inputFiles.length - 1}-more` : firstName;
