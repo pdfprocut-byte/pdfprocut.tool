@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
 import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
+import { padFileToExactSize } from '../../../shared/fileSizePadding.mjs';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
@@ -514,6 +515,16 @@ export default function GovernmentImageToolPage({ tool }) {
           const labeledOutput = await addPhotoNameDateFooter(output.blob, photoName, photoDate, showSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null);
           output = { ...output, ...labeledOutput };
         }
+        const targetBytes = hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null;
+        if (targetBytes) {
+          const padded = padFileToExactSize(new Uint8Array(await output.blob.arrayBuffer()), output.blob.type, targetBytes);
+          output = {
+            ...output,
+            blob: new Blob([padded.bytes], { type: output.blob.type }),
+            targetMet: padded.exact,
+            targetPadded: padded.padded
+          };
+        }
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
         const baseName = files[slot.key].name.replace(/\.[^.]+$/, '') || 'image';
         nextResults.push({
@@ -525,6 +536,8 @@ export default function GovernmentImageToolPage({ tool }) {
           height: output.height,
           originalSize: files[slot.key].size,
           targetMet: output.targetMet,
+          targetBytes,
+          targetPadded: Boolean(output.targetPadded),
           minimumSizeMet: !slotPreset?.minKb || output.blob.size >= slotPreset.minKb * 1024
         });
       }
@@ -614,7 +627,7 @@ export default function GovernmentImageToolPage({ tool }) {
         <label className="government-inline-field">Background color tolerance: {backgroundTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={backgroundTolerance} onChange={(event) => setBackgroundTolerance(event.target.value)}/></label>
       </>}
       {(config.crop || pair) && <label className="government-setting-check"><input type="checkbox" checked={trim} onChange={(event) => setTrim(event.target.checked)}/> Trim blank borders around the signature</label>}
-      {showSizeTarget && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter a maximum file size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}Compression targets this maximum; check the downloaded size because very small limits may not be achievable.</small></label>}
+      {showSizeTarget && <label className="government-inline-field">Exact output size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter an exact output size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}The downloaded file is set to this exact byte size when the image format allows safe padding; otherwise its actual size is shown.</small></label>}
       {dpiMode && <label className="government-inline-field">Resolution metadata (DPI)<input className="form-control" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/><small>DPI changes print-size metadata; it does not add detail or increase the pixel dimensions.</small></label>}
       {removeBackground && <label className="government-inline-field">White-background removal threshold: {backgroundThreshold}<input className="form-range" type="range" min="205" max="252" step="1" value={backgroundThreshold} onChange={(event) => setBackgroundThreshold(event.target.value)}/><small>Works best with a plain, near-white background. Inspect fine signature strokes before using the PNG.</small></label>}
       {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialMediaTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
@@ -625,8 +638,9 @@ export default function GovernmentImageToolPage({ tool }) {
       <h2 id="government-results-title">Preview and download</h2>
       <div className="government-results-grid">{results.map((result) => <article className="government-result-card" key={result.name}>
         <img className={socialProfileTool ? 'social-profile-result-image' : undefined} src={result.url} alt={`Processed ${result.name} preview`}/>
-        <p>{result.width} × {result.height} px · {(result.blob.size / 1024).toFixed(1)} KB</p>
-        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? 'Maximum size target not reached; best available result shown.' : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : 'File-size target reached.'}</p>}
+        <p>{result.width} × {result.height} px · {result.blob.size.toLocaleString()} bytes ({(result.blob.size / 1024).toFixed(1)} KB)</p>
+        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Could not reach the exact ${result.targetBytes.toLocaleString()}-byte target; actual size is ${result.blob.size.toLocaleString()} bytes.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : 'Exact file-size target reached.'}</p>}
+        {showSizeTarget && result.targetPadded && <p className="small text-secondary">Safe image metadata padding reached the selected byte size without changing the visible image.</p>}
         <ProtectedDownload className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</ProtectedDownload>
       </article>)}</div>
     </section>}

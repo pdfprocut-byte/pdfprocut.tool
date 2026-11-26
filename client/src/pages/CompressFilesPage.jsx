@@ -68,7 +68,9 @@ export default function CompressFilesPage({ tool }) {
         name: createDownloadName(file, extension),
         originalSize: file.size,
         outputSize: blob.size,
+        targetBytes: Number(response.headers.get('X-Target-Size')) || Math.round(targetSizeMb * 1024 * 1024),
         targetMet: response.headers.get('X-Target-Met') === 'true',
+        targetPadded: response.headers.get('X-Target-Padded') === 'true',
         rasterized: response.headers.get('X-PDF-Rasterized') === 'true'
       });
       toast.success('Compressed file is ready');
@@ -84,13 +86,13 @@ export default function CompressFilesPage({ tool }) {
   return <main className="container py-5 tool-page">
     <Link to="/tools" className="back">← All tools</Link>
     <h2>{tool.name}</h2>
-    <p className="lead">Choose a maximum size for a PDF or a modern Word, Excel, or PowerPoint file.</p>
+    <p className="lead">Choose the exact output size for a PDF or a modern Word, Excel, or PowerPoint file.</p>
     {tool.gov?.kind === 'pdf-compress' && <p className="government-tool-local-note" role="note">This document is sent to the PDF Pro Cut server for compression. Confirm the current application limit and review the compressed file before submitting it.</p>}
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    <div className="alert alert-warning" role="note">The selected size is a maximum. Compression tries to preserve clarity first, then lowers image quality further if needed. PDF pages may become images, so text may no longer be selectable. The original stays unchanged.</div>
+    <div className="alert alert-warning" role="note">Compression preserves clarity first, then lowers image quality further if needed. Format-safe padding is added when the compressed file is smaller than your selected size. If the file cannot be reduced enough or the format cannot be padded safely, the actual size is reported. PDF pages may become images, so text may no longer be selectable. The original stays unchanged.</div>
     <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); }}/>
     {file && <UploadedFileList files={file}/>}
-    <label className="mt-3">Target maximum size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
+    <label className="mt-3">Exact output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
         {targetOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
     </label>
@@ -101,14 +103,14 @@ export default function CompressFilesPage({ tool }) {
       </select>
     </label>
     {targetChoice === 'custom' && <div className="mt-3">
-      <label htmlFor="document-compression-target">Custom target maximum</label>
+      <label htmlFor="document-compression-target">Custom exact output size</label>
       <div className="input-group">
         <input id="document-compression-target" className="form-control" type="number" min={customTargetUnit === 'KB' ? 1 : 1 / 1024} max={customTargetUnit === 'KB' ? 25600 : 25} step={customTargetUnit === 'KB' ? 1 : 0.01} value={customTarget} onChange={(event) => setCustomTarget(event.target.value)}/>
         <select className="form-select" aria-label="Custom target size unit" value={customTargetUnit} onChange={(event) => changeCustomTargetUnit(event.target.value)}>
           <option value="KB">KB</option><option value="MB">MB</option>
         </select>
       </div>
-      <small className="text-secondary">Set a maximum from 1 KB to 25 MB. Whether compression reaches it depends on the file and quality setting.</small>
+      <small className="text-secondary">Choose an exact output size from 1 KB to 25 MB.</small>
     </div>}
     <button className="btn btn-primary mt-4" type="button" onClick={compress} disabled={busy || !file}>
       {busy ? 'Compressing…' : 'Compress file'}
@@ -117,12 +119,12 @@ export default function CompressFilesPage({ tool }) {
     <DownloadResultModal href={result?.url} fileName={result?.name} toolSlug={tool.slug} title="PDF Pro Cut compressed your file" downloadLabel="Download compressed file" onClose={() => setResult(null)}>
       {result && <>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
-          {result.targetMet ? `Target reached: ${formatSize(result.outputSize)}.` : `Target not reached. Best result: ${formatSize(result.outputSize)}.`}
+          {result.targetMet ? `Exact output size reached: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Could not reach the exact selected size of ${result.targetBytes.toLocaleString()} bytes. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
           {' '}Original: {formatSize(result.originalSize)}.
         </p>
+        {result.targetPadded && <p className="small text-secondary">Format-safe metadata padding reached the selected byte size without changing the document content.</p>}
         {result.rasterized && <p className="small text-warning">This PDF was rasterized to reduce its size; its text may no longer be selectable or searchable.</p>}
         {result.outputSize >= result.originalSize && !result.targetMet && <p className="small text-secondary">No smaller version could be produced at this quality. Try Balanced or Smallest.</p>}
-        {result.outputSize >= result.originalSize && result.targetMet && <p className="small text-secondary">This file already meets your target, so its original size was kept.</p>}
       </>}
     </DownloadResultModal>
     <p className="small text-secondary mt-3">Supports PDF and modern Word, Excel, and PowerPoint files up to 25 MB. Legacy DOC, XLS, and PPT files are not supported.</p>

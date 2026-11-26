@@ -4,6 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { unzipSync, zipSync } from 'fflate';
 import { extname } from 'node:path';
 import { ApiError } from '../utils/ApiError.js';
+import { padFileToExactSize } from '../../shared/fileSizePadding.mjs';
 
 const maxPages = 100;
 const maxPixelsPerPdfPage = 4_000_000;
@@ -238,8 +239,15 @@ export async function compressFile(file, targetSizeMb, quality = 'clear') {
   if (!['clear', 'balanced', 'smallest'].includes(quality)) throw new ApiError(400, 'Choose clear, balanced, or smallest compression quality');
   const targetBytes = Math.round(targetSizeMb * 1024 * 1024);
   const extension = extname(file.originalname || '').slice(1).toLowerCase();
-  if (extension === 'pdf') return compressPdf(file, targetBytes, quality);
-  return compressOfficeArchive(file, officeExtension(file), targetBytes, quality);
+  const result = extension === 'pdf'
+    ? await compressPdf(file, targetBytes, quality)
+    : await compressOfficeArchive(file, officeExtension(file), targetBytes, quality);
+  return withExactTarget(result, targetBytes);
+}
+
+function withExactTarget(result, targetBytes) {
+  const padded = padFileToExactSize(result.buffer, result.type, targetBytes);
+  return { ...result, buffer: Buffer.from(padded.bytes), targetMet: padded.exact, targetPadded: padded.padded };
 }
 
 export async function compressImage(file, targetSizeMb, quality = 'clear', requestedDimensions = {}) {
@@ -263,7 +271,7 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
   const sourceType = file.mimetype;
   const type = sourceType === 'image/png' && file.buffer.length > targetBytes ? 'image/jpeg' : sourceType;
   if (!resized && file.buffer.length <= targetBytes) {
-    return { buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height };
+    return withExactTarget({ buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height }, targetBytes);
   }
 
   let image;
@@ -332,5 +340,5 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
   }
   const buffer = bestFit || bestReduced || bestRequestedSize || file.buffer;
   const outputDimensions = bestFitDimensions || bestReducedDimensions || { width, height };
-  return { buffer, type, width: outputDimensions.width, height: outputDimensions.height };
+  return withExactTarget({ buffer, type, width: outputDimensions.width, height: outputDimensions.height }, targetBytes);
 }

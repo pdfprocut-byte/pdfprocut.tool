@@ -7,8 +7,8 @@ export const compress = asyncHandler(async (req, res) => {
   const uploaded = req.files?.[0];
   if (!uploaded) throw new ApiError(400, 'Upload a JPG or PNG image');
   const targetSizeMb = Number(req.body.targetSizeMb);
-  if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 1024) {
-    throw new ApiError(400, 'Choose a target size between 1 KB and 1 GB');
+  if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) {
+    throw new ApiError(400, 'Choose an exact output size between 1 KB and 25 MB');
   }
   const widthValue = req.body.width === undefined || req.body.width === '' ? undefined : Number(req.body.width);
   const heightValue = req.body.height === undefined || req.body.height === '' ? undefined : Number(req.body.height);
@@ -29,7 +29,8 @@ export const compress = asyncHandler(async (req, res) => {
     'X-Output-Width': String(result.width),
     'X-Output-Height': String(result.height),
     'X-Target-Size': String(targetBytes),
-    'X-Target-Met': String(result.buffer.length <= targetBytes)
+    'X-Target-Met': String(result.targetMet),
+    'X-Target-Padded': String(Boolean(result.targetPadded))
   });
   res.send(result.buffer);
 });

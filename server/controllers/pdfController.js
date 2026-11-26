@@ -47,7 +47,8 @@ export const compress = asyncHandler(async(req,res)=>{
     'X-Original-Size': String(uploaded.size),
     'X-Output-Size': String(result.buffer.length),
     'X-Target-Size': String(targetBytes),
-    'X-Target-Met': String(result.buffer.length <= targetBytes),
+    'X-Target-Met': String(result.targetMet),
+    'X-Target-Padded': String(Boolean(result.targetPadded)),
     'X-PDF-Rasterized': String(Boolean(result.rasterized))
   });
   res.send(result.buffer);
