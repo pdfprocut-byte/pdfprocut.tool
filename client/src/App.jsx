@@ -9,6 +9,7 @@ import { ProfileProvider } from './context/ProfileContext.jsx';
 import { fetchWithCredentials, apiBaseUrl } from './lib/authApi.js';
 import { useAuth } from './context/AuthContext.jsx';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
+import { homeSeo, pageSeo } from '../../shared/pageSeo.mjs';
 
 const Placeholder = ({ title }) => <main className="container py-5"><h2>{title}</h2><p>The page you requested could not be found.</p></main>;
 const ToolPage = lazy(() => import('./pages/ToolPage.jsx'));
@@ -26,18 +27,6 @@ const AccountProfilePage = lazy(() => import('./pages/AccountProfilePage.jsx'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'));
 const AssistantChat = lazy(() => import('./components/AssistantChat.jsx'));
 const LazyPage = ({ component: Component }) => <Suspense fallback={<main className="container py-5"><p role="status">Loading page…</p></main>}><Component/></Suspense>;
-const homeSeo = {
-  title: 'PDF Pro Cut | PDF, Image and Application Tools',
-  description: 'Resize government application photos and signatures, compress documents, edit PDFs, and convert files online with PDF Pro Cut.'
-};
-const pageSeo = {
-  '/tools': { title: 'Government Application, PDF and Image Tools | PDF Pro Cut', description: 'Resize recruitment photos and signatures, compress documents, change DPI, prepare white backgrounds, and edit PDFs online.' },
-  '/guides': { title: 'Government Application and Document Tool Guides | PDF Pro Cut', description: 'Step-by-step guidance for application photos, signatures, document compression, PDF editing, and file conversion.' },
-  '/about': { title: 'About PDF Pro Cut', description: 'Learn about PDF Pro Cut and our online tools for working with PDFs and documents.' },
-  '/contact': { title: 'Contact PDF Pro Cut', description: 'Contact PDF Pro Cut support with questions or feedback about our document tools.' },
-  '/privacy-policy': { title: 'Privacy Policy | PDF Pro Cut', description: 'Read how PDF Pro Cut handles account details, uploaded documents, and browser-stored files.' },
-  '/terms': { title: 'Terms of Use | PDF Pro Cut', description: 'Read the terms for using PDF Pro Cut online document tools.' }
-};
 const noIndexPaths = new Set(['/login', '/register', '/verify-email', '/forgot-password', '/profile', '/word-editor']);
 
 function setMeta(selector, attribute, value) {

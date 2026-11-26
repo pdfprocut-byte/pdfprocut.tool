@@ -82,5 +82,5 @@ const catalog = [
 
 export const toolCatalog = catalog.map((tool) => ({
   ...tool,
-  section: tool.section || (tool.category === 'Social Media' ? 'Social Media' : tool.gov ? 'Government' : 'Documents')
+  section: tool.section || (tool.category === 'Social Media' ? 'Social Media' : tool.gov ? 'Public Service' : 'Documents')
 }));

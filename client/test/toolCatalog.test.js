@@ -4,8 +4,8 @@ import { toolCatalog } from '../../shared/toolCatalog.mjs';
 import { socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../shared/imagePresets.mjs';
 
 test('the tool directory has the requested three sections', () => {
-  assert.deepEqual([...new Set(toolCatalog.map(({ section }) => section))].sort(), ['Documents', 'Government', 'Social Media'].sort());
-  assert.ok(toolCatalog.filter(({ gov }) => gov).every(({ section, category }) => section === (category === 'Social Media' ? 'Social Media' : 'Government')));
+  assert.deepEqual([...new Set(toolCatalog.map(({ section }) => section))].sort(), ['Documents', 'Public Service', 'Social Media'].sort());
+  assert.ok(toolCatalog.filter(({ gov }) => gov).every(({ section, category }) => section === (category === 'Social Media' ? 'Social Media' : 'Public Service')));
 });
 
 test('all social media tools have section placement and a valid default size preset', () => {

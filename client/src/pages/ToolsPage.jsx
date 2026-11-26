@@ -11,7 +11,7 @@ const featuredSlugs = ['merge-pdf', 'split-pdf', 'compress-files', 'kerala-psc-p
 const toolRanks = new Map(featuredSlugs.map((slug, index) => [slug, index]));
 const orderedTools = [...tools].sort((a, b) => (toolRanks.get(a.slug) ?? featuredSlugs.length) - (toolRanks.get(b.slug) ?? featuredSlugs.length));
 const sections = [
-  { name: 'Government' },
+  { name: 'Public Service' },
   { name: 'Documents' },
   { name: 'Social Media' }
 ];
@@ -22,7 +22,7 @@ export default function ToolsPage() {
   const [query, setQuery] = useState('');
   const [searchParams] = useSearchParams();
   const requestedSection = searchParams.get('section');
-  const activeSection = sections.some(({ name }) => name === requestedSection) ? requestedSection : 'Government';
+  const activeSection = sections.some(({ name }) => name === requestedSection) ? requestedSection : 'Public Service';
   const searchTerm = query.trim().toLowerCase();
   const visibleTools = orderedTools.filter((tool) =>
     tool.section === activeSection &&
@@ -38,7 +38,7 @@ export default function ToolsPage() {
           <Link to="/">Home</Link><span aria-hidden="true">/</span><span aria-current="page">Tools</span>
         </nav>
         <h1>Online <em>file tools.</em></h1>
-        <p>Choose a government, document, or social media tool and start with editable size presets.</p>
+        <p>Choose a public service, document, or social media tool and start with editable size presets.</p>
         <div className="tools-search-wrap">
           <FaSearch aria-hidden="true"/>
           <input
@@ -58,7 +58,7 @@ export default function ToolsPage() {
       <div className="tools-filter-row" id="tools-directory-results">
         <p className="tools-result-count" role="status">{visibleTools.length} {visibleTools.length === 1 ? 'tool' : 'tools'}</p>
       </div>
-      {activeSection === 'Government' && <section className="government-tools-overview" aria-label="Government image tool features">
+      {activeSection === 'Public Service' && <section className="government-tools-overview" aria-label="Public service image tool features">
         <div>
           <span className="pdfpro-info-eyebrow">APPLICATION IMAGE TOOLS</span>
           <h3>Start with researched dimensions</h3>

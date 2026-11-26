@@ -7,7 +7,7 @@ import { getToolCategoryClass, tools } from '../../tools.js';
 import BrandLogo from './BrandLogo.jsx';
 import '../../styles/navbar.css';
 
-const toolSectionNames = ['Government', 'Documents', 'Social Media'];
+const toolSectionNames = ['Public Service', 'Documents', 'Social Media'];
 
 function groupToolsByCategory(sectionTools) {
   const groups = new Map();
@@ -26,7 +26,7 @@ export default function Navbar() {
   const sectionToggleRefs = useRef({});
   const location = useLocation();
   const { user, logout } = useAuth();
-  const activeToolSection = new URLSearchParams(location.search).get('section') || 'Government';
+  const activeToolSection = new URLSearchParams(location.search).get('section') || 'Public Service';
 
   useEffect(() => {
     setMenuOpen(false);
