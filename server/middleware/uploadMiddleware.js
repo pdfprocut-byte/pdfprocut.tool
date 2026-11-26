@@ -19,7 +19,7 @@ const allowed = new Set([
   'application/vnd.ms-powerpoint.presentation.macroEnabled.12',
   'application/vnd.ms-powerpoint.slideshow.macroEnabled.12',
   'application/vnd.ms-powerpoint.template.macroEnabled.12',
-  'image/jpeg', 'image/png', 'text/plain', 'text/html'
+  'image/jpeg', 'image/png', 'image/webp', 'text/plain', 'text/html'
 ]);
 
 const storage = {

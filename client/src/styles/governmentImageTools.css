@@ -5,6 +5,11 @@
 .government-tool-local-note > p + a,.government-tool-local-note > a + p { display: block; margin-top: .45rem; }
 .government-tool-local-note a { color: #43319a; font-size: .82rem; font-weight: 700; }
 .government-tool-local-note .government-tool-privacy-note { margin-top: .45rem; color: #667085; font-size: .78rem; }
+.government-preset-status { display: block; margin-bottom: .35rem; color: #1e673a; font-size: .78rem; }
+.government-preset-status-custom { color: #5d4bb3; }
+.government-preset-status-example { color: #875b10; }
+.government-preset-meta { margin-top: .35rem!important; color: #667085; font-size: .76rem; }
+.government-preset-selector { margin-bottom: .6rem; }
 .government-tool-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1rem; margin-top: 1.4rem; }
 .government-tool-slot,.government-tool-settings,.government-camera,.government-results { min-width: 0; margin-top: 1rem; padding: 1.2rem; border: 1px solid #e6eaf0; border-radius: 1rem; background: #fff; box-shadow: 0 6px 18px #18233b08; }
 .government-tool-slot h2,.government-tool-settings h2,.government-camera h2,.government-results h2 { margin: 0 0 .9rem; color: #2e3a50; font-size: 1.08rem; font-weight: 750; }
@@ -30,10 +35,20 @@
 .government-dimensions small,.government-inline-field small { color: #667085; font-size: .75rem; font-weight: 400; line-height: 1.55; }
 .government-setting-check { display: flex; align-items: flex-start; gap: .6rem; margin: .75rem 0; color: #475467; font-size: .86rem; line-height: 1.5; }
 .government-setting-check input { flex: 0 0 auto; margin-top: .28rem; }
+.government-setting-check small { display: block; margin-left: 1.55rem; color: #667085; font-size: .75rem; font-weight: 400; line-height: 1.5; }
+.government-transform-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .9rem; }
+.government-transform-controls .government-inline-field { flex: 1 1 220px; margin-top: .25rem; }
+.government-transform-controls .government-setting-check { margin-bottom: .6rem; }
 .government-inline-field { max-width: 34rem; margin-top: 1rem; }
 .government-camera video { display: block; width: min(100%, 480px); max-height: 380px; margin-top: .8rem; border-radius: .8rem; background: #101828; object-fit: contain; }
 .government-camera-actions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .7rem; }
 .government-results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
+.passport-print-settings { margin-top: 1rem; }
+.passport-copy-count { grid-column: 1 / -1; }
+.passport-print-result { display: grid; justify-items: start; gap: .75rem; margin-top: 1rem; }
+.passport-print-preview { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; width: min(100%, 310px); aspect-ratio: 210 / 297; padding: 4%; border: 1px solid #d0d5dd; background: #fff; box-shadow: 0 8px 24px #17203312; }
+.passport-print-preview img { display: block; width: 100%; height: auto; align-self: start; border: 1px solid #e4e7ec; object-fit: cover; }
+.passport-print-actions { display: flex; flex-wrap: wrap; gap: .55rem; }
 .government-result-card { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: .4rem; padding: .85rem; border: 1px solid #eaecf0; border-radius: .8rem; }
 .government-result-card img { display: block; align-self: center; width: auto; max-width: 100%; height: auto; max-height: 320px; object-fit: contain; background: repeating-conic-gradient(#f0f2f6 0% 25%, #fff 0% 50%) 50% / 18px 18px; }
 .government-result-card img.social-profile-result-image { width: 180px; height: 180px; align-self: center; border-radius: 50%; object-fit: cover; }

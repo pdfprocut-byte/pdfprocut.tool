@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
+import { createPassportPrintSheet } from '../lib/passportPrintSheet.js';
 import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
 const maxPixelEditingPixels = 12_000_000;
+const maxUploadBytes = 25 * 1024 * 1024;
 const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function getLocalDateValue() {
@@ -40,30 +42,9 @@ function canvasBlob(canvas, type, quality) {
   });
 }
 
-async function padJpegToSize(blob, targetBytes) {
-  if (blob.type !== 'image/jpeg' || blob.size >= targetBytes) return blob;
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let endMarker = -1;
-  for (let index = bytes.length - 2; index >= 0; index -= 1) {
-    if (bytes[index] === 0xff && bytes[index + 1] === 0xd9) { endMarker = index; break; }
-  }
-  if (endMarker < 0) return blob;
-
-  let remaining = targetBytes - bytes.length;
-  const parts = [bytes.slice(0, endMarker)];
-  while (remaining >= 4) {
-    let segmentSize = Math.min(remaining, 65_537);
-    const leftover = remaining - segmentSize;
-    if (leftover > 0 && leftover < 4) segmentSize -= 4 - leftover;
-    const payloadSize = segmentSize - 4;
-    const segment = new Uint8Array(segmentSize);
-    segment.set([0xff, 0xfe, ((payloadSize + 2) >> 8) & 255, (payloadSize + 2) & 255]);
-    segment.fill(0x20, 4);
-    parts.push(segment);
-    remaining -= segmentSize;
-  }
-  parts.push(bytes.slice(endMarker));
-  return new Blob(parts, { type: 'image/jpeg' });
+function hexToRgb(color) {
+  const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color || '');
+  return match ? match.slice(1).map((part) => Number.parseInt(part, 16)) : [255, 255, 255];
 }
 
 async function findContentBounds(imageData, width, height, threshold = 245) {
@@ -108,9 +89,10 @@ function sampleCornerBackground(data, width, height) {
   }, { color: colors[0], distance: Infinity }).color;
 }
 
-async function replaceSampledBackground(context, width, height, tolerance) {
+async function replaceSampledBackground(context, width, height, tolerance, backgroundColor = '#ffffff') {
   const image = context.getImageData(0, 0, width, height);
   const background = sampleCornerBackground(image.data, width, height);
+  const replacement = hexToRgb(backgroundColor);
   const cutoff = Number(tolerance);
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -119,9 +101,9 @@ async function replaceSampledBackground(context, width, height, tolerance) {
       const distance = Math.hypot(red - background[0], green - background[1], blue - background[2]);
       if (distance >= cutoff) continue;
       const amount = Math.max(0, Math.min(1, distance / cutoff));
-      image.data[offset] = Math.round(255 * (1 - amount) + red * amount);
-      image.data[offset + 1] = Math.round(255 * (1 - amount) + green * amount);
-      image.data[offset + 2] = Math.round(255 * (1 - amount) + blue * amount);
+      image.data[offset] = Math.round(replacement[0] * (1 - amount) + red * amount);
+      image.data[offset + 1] = Math.round(replacement[1] * (1 - amount) + green * amount);
+      image.data[offset + 2] = Math.round(replacement[2] * (1 - amount) + blue * amount);
     }
     if (y > 0 && y % 64 === 0) await yieldToBrowser();
   }
@@ -172,26 +154,36 @@ async function prepareImage(file, options) {
   const bitmap = await createImageBitmap(file);
   let baseCanvas;
   try {
-    const needsPixelProcessing = options.removeBackground || options.replaceBackground || options.trim;
+    const rotation = ((Number(options.rotation) % 360) + 360) % 360;
+    const quarterTurn = rotation === 90 || rotation === 270;
+    const sourceWidth = quarterTurn ? bitmap.height : bitmap.width;
+    const sourceHeight = quarterTurn ? bitmap.width : bitmap.height;
+    const transformed = rotation !== 0 || options.flipHorizontal || options.flipVertical;
+    const needsPixelProcessing = options.removeBackground || options.replaceBackground || options.trim || transformed;
     const pixelCount = bitmap.width * bitmap.height;
     if (pixelCount > maxPixels) throw new Error('This image is larger than 30 megapixels. Resize it before processing.');
-    if (needsPixelProcessing && pixelCount > maxPixelEditingPixels) throw new Error('Background editing and signature trimming support images up to 12 megapixels. Resize a copy first, then try again.');
+    if ((options.removeBackground || options.replaceBackground || options.trim) && pixelCount > maxPixelEditingPixels) throw new Error('Background editing and signature trimming support images up to 12 megapixels. Resize a copy first, then try again.');
     let baseContext = null;
     if (needsPixelProcessing) {
       baseCanvas = document.createElement('canvas');
-      baseCanvas.width = bitmap.width; baseCanvas.height = bitmap.height;
+      baseCanvas.width = sourceWidth; baseCanvas.height = sourceHeight;
       baseContext = baseCanvas.getContext('2d', { willReadFrequently: true });
       if (!baseContext) throw new Error('Your browser could not open this image.');
-      baseContext.drawImage(bitmap, 0, 0);
+      baseContext.save();
+      baseContext.translate(sourceWidth / 2, sourceHeight / 2);
+      baseContext.rotate(rotation * Math.PI / 180);
+      baseContext.scale(options.flipHorizontal ? -1 : 1, options.flipVertical ? -1 : 1);
+      baseContext.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
+      baseContext.restore();
     }
     const source = baseCanvas || bitmap;
 
     if (options.removeBackground) {
-      const pixels = baseContext.getImageData(0, 0, bitmap.width, bitmap.height);
+      const pixels = baseContext.getImageData(0, 0, sourceWidth, sourceHeight);
       const threshold = Number(options.backgroundThreshold);
-      for (let y = 0; y < bitmap.height; y += 1) {
-        for (let x = 0; x < bitmap.width; x += 1) {
-          const offset = (y * bitmap.width + x) * 4;
+      for (let y = 0; y < sourceHeight; y += 1) {
+        for (let x = 0; x < sourceWidth; x += 1) {
+          const offset = (y * sourceWidth + x) * 4;
           const red = pixels.data[offset]; const green = pixels.data[offset + 1]; const blue = pixels.data[offset + 2];
           const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
           const lightness = Math.min(red, green, blue);
@@ -202,10 +194,10 @@ async function prepareImage(file, options) {
       }
       baseContext.putImageData(pixels, 0, 0);
     }
-    if (options.replaceBackground) await replaceSampledBackground(baseContext, bitmap.width, bitmap.height, options.backgroundTolerance);
+    if (options.replaceBackground) await replaceSampledBackground(baseContext, sourceWidth, sourceHeight, options.backgroundTolerance, options.backgroundColor);
 
-    let crop = { x: 0, y: 0, width: bitmap.width, height: bitmap.height };
-    if (options.trim) crop = await findContentBounds(baseContext.getImageData(0, 0, bitmap.width, bitmap.height), bitmap.width, bitmap.height);
+    let crop = { x: 0, y: 0, width: sourceWidth, height: sourceHeight };
+    if (options.trim) crop = await findContentBounds(baseContext.getImageData(0, 0, sourceWidth, sourceHeight), sourceWidth, sourceHeight);
     const requestedWidth = Number(options.width) || crop.width;
     const requestedHeight = Number(options.height) || crop.height;
     if (!Number.isInteger(requestedWidth) || !Number.isInteger(requestedHeight) || requestedWidth < 1 || requestedHeight < 1 || requestedWidth * requestedHeight > maxPixels) {
@@ -226,58 +218,67 @@ async function prepareImage(file, options) {
     }
 
     const format = options.format === 'png' ? 'image/png' : 'image/jpeg';
-    if (!needsPixelProcessing && !options.whiteBackground && !options.photoFooter && file.type === format && bitmap.width === requestedWidth && bitmap.height === requestedHeight) {
+    const preferredQuality = Math.max(0.35, Math.min(1, Number(options.quality ?? 0.92)));
+    if (!needsPixelProcessing && !options.whiteBackground && !options.photoFooter && file.type === format && bitmap.width === requestedWidth && bitmap.height === requestedHeight && !options.targetBytes && (format === 'image/png' || preferredQuality >= 1)) {
       let passthrough = file;
       if (options.dpi) passthrough = format === 'image/png' ? await addPngDpi(passthrough, options.dpi) : await addJpegDpi(passthrough, options.dpi);
-      if (!options.targetBytes || passthrough.size <= options.targetBytes) {
-        return { blob: passthrough, width: requestedWidth, height: requestedHeight, targetMet: true, originalWidth: bitmap.width, originalHeight: bitmap.height };
-      }
+      return { blob: passthrough, width: requestedWidth, height: requestedHeight, targetMet: true, originalWidth: bitmap.width, originalHeight: bitmap.height, encodedQuality: null };
     }
     const canvas = document.createElement('canvas');
     let best = null;
     let bestWidth = requestedWidth;
     let bestHeight = requestedHeight;
+    let bestQuality = preferredQuality;
     let targetMet = !options.targetBytes;
     try {
-      const width = requestedWidth;
-      const height = requestedHeight;
-      canvas.width = width; canvas.height = height;
-      const context = canvas.getContext('2d');
-      if (!context) throw new Error('Your browser could not prepare the output image.');
-      context.imageSmoothingEnabled = true;
-      context.imageSmoothingQuality = 'high';
-      if (options.whiteBackground || options.photoFooter || format === 'image/jpeg') {
-        context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
-      }
-      if (options.fitMode === 'contain' || options.photoFooter) {
-        const scale = Math.min(width / crop.width, imageAreaHeight / crop.height);
-        const drawWidth = crop.width * scale;
-        const drawHeight = crop.height * scale;
-        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (imageAreaHeight - drawHeight) / 2, drawWidth, drawHeight);
-      } else {
-        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, imageAreaHeight);
-      }
-      if (options.photoFooter) drawPhotoFooter(context, width, height, options.photoFooter);
-      const qualitySteps = options.targetBytes && format === 'image/jpeg'
-        ? [1, 0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82]
-        : [0.92];
-      for (const quality of qualitySteps) {
-        let candidate = await canvasBlob(canvas, format, quality);
-        if (options.dpi) candidate = format === 'image/png' ? await addPngDpi(candidate, options.dpi) : await addJpegDpi(candidate, options.dpi);
-        if (!options.targetBytes || candidate.size <= options.targetBytes) {
-          best = candidate; bestWidth = width; bestHeight = height; targetMet = true; break;
+      const dimensionScales = options.targetBytes && options.allowDimensionReduction ? [1, 0.9, 0.8, 0.7, 0.6, 0.5] : [1];
+      const qualitySteps = format === 'image/jpeg'
+        ? options.targetBytes
+          ? Array.from({ length: Math.floor((preferredQuality - 0.55) / 0.05) + 1 }, (_, index) => Math.max(0.55, Number((preferredQuality - index * 0.05).toFixed(2))))
+          : [preferredQuality]
+        : [preferredQuality];
+      let bestScore = -1;
+      for (const dimensionScale of dimensionScales) {
+        const width = Math.max(1, Math.round(requestedWidth * dimensionScale));
+        const height = Math.max(1, Math.round(requestedHeight * dimensionScale));
+        if (width * height > maxPixels) throw new Error('Enter positive image dimensions with no more than 30 megapixels total.');
+        const footerHeight = options.photoFooter ? Math.max(30, Math.round(height * 0.15)) : 0;
+        const imageAreaHeight = Math.max(1, height - footerHeight);
+        canvas.width = width; canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Your browser could not prepare the output image.');
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+        if (options.whiteBackground || options.photoFooter || format === 'image/jpeg' || options.fitMode === 'contain') {
+          context.fillStyle = options.backgroundColor || '#ffffff'; context.fillRect(0, 0, width, height);
+        }
+        if (options.fitMode === 'contain' || options.photoFooter) {
+          const scale = Math.min(width / crop.width, imageAreaHeight / crop.height);
+          const drawWidth = crop.width * scale;
+          const drawHeight = crop.height * scale;
+          context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (imageAreaHeight - drawHeight) / 2, drawWidth, drawHeight);
+        } else {
+          context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, imageAreaHeight);
+        }
+        if (options.photoFooter) drawPhotoFooter(context, width, height, options.photoFooter);
+        for (const quality of qualitySteps) {
+          let candidate = await canvasBlob(canvas, format, quality);
+          if (options.dpi) candidate = format === 'image/png' ? await addPngDpi(candidate, options.dpi) : await addJpegDpi(candidate, options.dpi);
+          const meetsTarget = !options.targetBytes || candidate.size <= options.targetBytes;
+          const score = dimensionScale * quality;
+          if (meetsTarget && score > bestScore) {
+            best = candidate; bestWidth = width; bestHeight = height; bestQuality = quality; bestScore = score; targetMet = true;
+          }
         }
       }
     } finally {
       canvas.width = 0; canvas.height = 0;
     }
 
-    if (!best) throw new Error('Could not fit this image under the selected maximum without reducing its dimensions or clarity further. Choose a larger maximum or dimensions allowed by the current notice.');
-    if (options.photoFooter && options.targetBytes && format === 'image/jpeg') {
-      // Keep the best encoded pixels, then use a JPEG comment to reach about 1 KB below the upload ceiling.
-      best = await padJpegToSize(best, Math.max(1024, options.targetBytes - 1024));
-    }
-    return { blob: best, width: bestWidth, height: bestHeight, targetMet, originalWidth: bitmap.width, originalHeight: bitmap.height };
+    if (!best) throw new Error(options.allowDimensionReduction
+      ? 'Could not meet this size limit at acceptable image quality, even after reducing dimensions. Choose a larger maximum or reduce the dimensions yourself.'
+      : 'Could not meet this size limit at acceptable image quality and the selected dimensions. Choose a larger maximum or enable dimension reduction if the current notice permits it.');
+    return { blob: best, width: bestWidth, height: bestHeight, targetMet, originalWidth: bitmap.width, originalHeight: bitmap.height, encodedQuality: bestQuality };
   } finally {
     bitmap.close();
     if (baseCanvas) { baseCanvas.width = 0; baseCanvas.height = 0; }
@@ -321,6 +322,7 @@ function initialOutputDimensions(preset, originalWidth, originalHeight) {
 
 export default function GovernmentImageToolPage({ tool }) {
   const config = tool.gov || {};
+  const isPassportTool = tool.slug === 'passport-size-photo-maker';
   const pair = config.kind === 'pair';
   const socialProfileTool = config.kind === 'social-profile';
   const socialMediaTool = socialProfileTool || config.kind === 'social-post' || config.kind === 'social-story';
@@ -339,6 +341,14 @@ export default function GovernmentImageToolPage({ tool }) {
   const [maintainAspect, setMaintainAspect] = useState(true);
   const [targetKb, setTargetKb] = useState(String(initialPreset?.defaultTargetKb ?? initialPreset?.maxKb ?? ''));
   const [dpi, setDpi] = useState(String(initialPreset?.dpi || '300'));
+  const [dpiChoice, setDpiChoice] = useState([72, 96, 150, 200, 300, 600].includes(Number(initialPreset?.dpi)) ? String(initialPreset.dpi) : 'custom');
+  const [presetMode, setPresetMode] = useState(initialPreset?.status === 'verified' ? 'verified' : ['custom', 'custom-required'].includes(initialPreset?.status) ? 'custom' : 'example');
+  const [rotation, setRotation] = useState(0);
+  const [flipHorizontal, setFlipHorizontal] = useState(false);
+  const [flipVertical, setFlipVertical] = useState(false);
+  const [quality, setQuality] = useState(100);
+  const [allowDimensionReduction, setAllowDimensionReduction] = useState(config.kind === 'compress' && !initialPreset?.width && !initialPreset?.minWidth);
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
   const [whiteBackground, setWhiteBackground] = useState(initialPreset?.whiteBackground ?? config.kind === 'white-background');
   const [fitMode, setFitMode] = useState(initialPreset?.fitMode || (socialMediaTool ? 'cover' : 'contain'));
   const [trim, setTrim] = useState(Boolean(config.crop));
@@ -349,29 +359,47 @@ export default function GovernmentImageToolPage({ tool }) {
   const [photoName, setPhotoName] = useState('');
   const [photoDate, setPhotoDate] = useState(getLocalDateValue);
   const [busy, setBusy] = useState(false);
+  const [processingError, setProcessingError] = useState('');
   const [results, setResults] = useState([]);
+  const [printCopies, setPrintCopies] = useState(30);
+  const [printWidthMm, setPrintWidthMm] = useState('35');
+  const [printHeightMm, setPrintHeightMm] = useState('45');
+  const [printSheetResult, setPrintSheetResult] = useState(null);
+  const [printSheetBusy, setPrintSheetBusy] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   const [cameraError, setCameraError] = useState('');
   const videoRef = useRef(null);
   const objectUrls = useRef(new Set());
+  const activePresetForSlot = (slot) => presetMode === 'custom' && !socialMediaTool ? null : presetForSlot(slot);
   const removeBackground = config.kind === 'remove-background';
   const replaceBackground = config.kind === 'white-background';
   const compression = config.kind === 'compress';
   const dpiMode = config.kind === 'dpi';
   const hasCamera = config.kind === 'live-photo';
-  const currentPreset = presetForSlot(slots[0].key);
+  const basePreset = presetForSlot(slots[0].key);
+  const currentPreset = activePresetForSlot(slots[0].key);
   const currentGuidance = governmentToolGuidanceByTool[tool.slug];
+  const presetExpired = Boolean(basePreset?.validThrough && basePreset.validThrough < getLocalDateValue());
   const officialSources = socialMediaTool
     ? selectedSocialPreset.sourceUrl ? [{ label: selectedSocialPreset.sourceLabel || `${selectedSocialPreset.label} image guidance`, url: selectedSocialPreset.sourceUrl }] : []
-    : currentPreset?.sources || (currentPreset?.sourceUrl ? [{ label: currentPreset.sourceLabel || 'Official size guidance', url: currentPreset.sourceUrl }] : currentGuidance?.sources || []);
-  const showSizeTarget = compression || Boolean(currentPreset?.maxKb);
+    : basePreset?.sources || (basePreset?.sourceUrl ? [{ label: basePreset.sourceLabel || 'Official size guidance', url: basePreset.sourceUrl }] : currentGuidance?.sources || []);
+  const showSizeTarget = compression || Boolean(currentPreset?.maxKb) || presetMode === 'custom';
 
   const makeObjectUrl = (blob) => {
     const url = URL.createObjectURL(blob);
     objectUrls.current.add(url);
     return url;
   };
+  const clearPrintSheet = () => {
+    if (printSheetResult?.url) {
+      URL.revokeObjectURL(printSheetResult.url);
+      objectUrls.current.delete(printSheetResult.url);
+      setPrintSheetResult(null);
+    }
+  };
   const clearResults = () => {
+    setProcessingError('');
+    clearPrintSheet();
     results.forEach((result) => {
       URL.revokeObjectURL(result.url);
       objectUrls.current.delete(result.url);
@@ -380,7 +408,10 @@ export default function GovernmentImageToolPage({ tool }) {
   };
   const selectFile = (slot, file) => {
     if (!file) return;
-    if (!['image/jpeg', 'image/png'].includes(file.type)) return toast.error('Choose a JPG or PNG image.');
+    if (file.size > maxUploadBytes) return toast.error('Choose an image smaller than 25 MB.');
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const acceptedTypes = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
+    if (!acceptedTypes[extension] || (file.type && file.type !== acceptedTypes[extension])) return toast.error('Choose a valid JPG, PNG, or WebP image with a matching file extension.');
     clearResults();
     setFiles((current) => ({ ...current, [slot]: file }));
     const previewUrl = makeObjectUrl(file);
@@ -391,9 +422,9 @@ export default function GovernmentImageToolPage({ tool }) {
       }
       return { ...current, [slot]: previewUrl };
     });
-    if (dpiMode) setFormat(file.type === 'image/png' ? 'png' : 'jpeg');
+    if (dpiMode) setFormat(extension === 'png' ? 'png' : 'jpeg');
     createImageBitmap(file).then((bitmap) => {
-      const preset = presetForSlot(slot);
+      const preset = activePresetForSlot(slot);
       const outputDimensions = initialOutputDimensions(preset, bitmap.width, bitmap.height);
       setDimensions((current) => ({ ...current, [slot]: outputDimensions }));
       bitmap.close();
@@ -430,6 +461,24 @@ export default function GovernmentImageToolPage({ tool }) {
       const image = current.image;
       if (!image?.originalWidth || !image?.originalHeight) return current;
       return { ...current, image: { ...image, width: String(preset.width), height: String(preset.height), aspectRatio: preset.width / preset.height } };
+    });
+  };
+
+  const changePresetMode = (mode) => {
+    clearResults();
+    setPresetMode(mode);
+    const presetModeIsCustom = mode === 'custom';
+    const preset = presetForSlot(slots[0].key);
+    setTargetKb(presetModeIsCustom ? '' : String(preset?.defaultTargetKb ?? preset?.maxKb ?? ''));
+    setDimensions((current) => {
+      const next = { ...current };
+      for (const slot of slots) {
+        const prior = current[slot.key];
+        if (!prior?.originalWidth || !prior?.originalHeight) continue;
+        const slotPreset = presetForSlot(slot.key);
+        next[slot.key] = initialOutputDimensions(presetModeIsCustom ? null : slotPreset, prior.originalWidth, prior.originalHeight);
+      }
+      return next;
     });
   };
 
@@ -471,14 +520,35 @@ export default function GovernmentImageToolPage({ tool }) {
     }).catch((error) => toast.error(error.message));
   };
 
+  const createPrintSheet = async () => {
+    const photo = results[0];
+    const widthMm = Number(printWidthMm); const heightMm = Number(printHeightMm);
+    if (!photo) return toast.error('Prepare the passport photo first.');
+    if (!Number.isFinite(widthMm) || !Number.isFinite(heightMm) || widthMm <= 0 || heightMm <= 0 || widthMm > 100 || heightMm > 100) return toast.error('Enter print dimensions between 1 and 100 mm.');
+    setPrintSheetBusy(true);
+    try {
+      const blob = await createPassportPrintSheet(photo.blob, photo.width, photo.height, printCopies, widthMm, heightMm);
+      if (printSheetResult?.url) { URL.revokeObjectURL(printSheetResult.url); objectUrls.current.delete(printSheetResult.url); }
+      const name = `${tool.slug}-a4-print-sheet.pdf`;
+      const url = makeObjectUrl(blob);
+      setPrintSheetResult({ blob, name, url });
+      toast.success('A4 print sheet is ready.');
+    } catch (error) {
+      setProcessingError(error.message || 'Could not create the print sheet.');
+      toast.error(error.message || 'Could not create the print sheet.');
+    } finally {
+      setPrintSheetBusy(false);
+    }
+  };
+
   const process = async () => {
-    if (slots.some(({ key }) => !files[key])) return toast.error(pair ? 'Choose both a photo and a signature.' : 'Choose a JPG or PNG image first.');
+    if (slots.some(({ key }) => !files[key])) return toast.error(pair ? 'Choose both a photo and a signature.' : 'Choose a JPG, PNG, or WebP image first.');
     if (hasNameDateOption && addNameDate && (!photoName.trim() || !photoDate)) return toast.error('Enter both the name and date to add them below the photo.');
     const requestedKb = Number(targetKb);
-    const activePreset = presetForSlot(slots[0].key);
+    const activePreset = activePresetForSlot(slots[0].key);
     const hasSizeTarget = compression || Boolean(activePreset?.maxKb);
     const maxTargetKb = activePreset?.maxKb || 15360;
-    if (hasSizeTarget && targetKb && (!Number.isFinite(requestedKb) || requestedKb < (activePreset?.minKb || 1) || requestedKb > maxTargetKb)) {
+    if (targetKb && (!Number.isFinite(requestedKb) || requestedKb < (activePreset?.minKb || 1) || requestedKb > maxTargetKb)) {
       return toast.error(`Enter a file-size target between ${activePreset?.minKb || 1} KB and ${maxTargetKb} KB.`);
     }
     if (hasSizeTarget && !targetKb) return toast.error('Enter a file-size target from the current application requirements.');
@@ -489,7 +559,7 @@ export default function GovernmentImageToolPage({ tool }) {
       const nextResults = [];
       for (const slot of slots) {
         const selectedDimensions = dimensions[slot.key] || {};
-        const slotPreset = presetForSlot(slot.key);
+        const slotPreset = activePresetForSlot(slot.key);
         const outputWidth = Number(selectedDimensions.width);
         const outputHeight = Number(selectedDimensions.height);
         if (slotPreset?.minWidth && (outputWidth < slotPreset.minWidth || outputHeight < slotPreset.minHeight)) {
@@ -508,12 +578,18 @@ export default function GovernmentImageToolPage({ tool }) {
           replaceBackground,
           backgroundThreshold,
           backgroundTolerance,
+          backgroundColor,
+          rotation,
+          flipHorizontal,
+          flipVertical,
+          quality: Number(quality) / 100,
+          allowDimensionReduction: allowDimensionReduction && !slotPreset?.width && !slotPreset?.minWidth,
           format: removeBackground ? 'png' : format,
           dpi: slotPreset?.dpi || (dpiMode ? Number(dpi) : null),
           photoFooter: hasNameDateOption && addNameDate && (!pair || slot.key === 'photo') ? { name: photoName, date: photoDate } : null,
-          targetBytes: hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null
+          targetBytes: targetKb ? Math.round(requestedKb * 1024) : null
         });
-        const targetBytes = hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null;
+        const targetBytes = targetKb ? Math.round(requestedKb * 1024) : null;
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
         const baseName = files[slot.key].name.replace(/\.[^.]+$/, '') || 'image';
         nextResults.push({
@@ -523,16 +599,21 @@ export default function GovernmentImageToolPage({ tool }) {
           blob: output.blob,
           width: output.width,
           height: output.height,
+          requestedWidth: outputWidth,
+          requestedHeight: outputHeight,
           originalSize: files[slot.key].size,
           targetMet: output.targetMet,
           targetBytes,
-          minimumSizeMet: !slotPreset?.minKb || output.blob.size >= slotPreset.minKb * 1024
+          minimumSizeMet: !slotPreset?.minKb || output.blob.size >= slotPreset.minKb * 1024,
+          encodedQuality: output.encodedQuality,
+          compressionPercent: files[slot.key].size ? ((files[slot.key].size - output.blob.size) / files[slot.key].size) * 100 : 0
         });
       }
       setResults(nextResults);
       const socialResultLabel = socialProfileTool ? 'profile photo' : 'image';
       toast.success(pair ? 'Photo and signature are ready.' : socialMediaTool ? `${selectedSocialPreset.label} ${socialResultLabel} is ready.` : 'Your image is ready to download.');
     } catch (error) {
+      setProcessingError(error.message || 'Could not prepare this image.');
       toast.error(error.message || 'Could not prepare this image.');
     } finally {
       setBusy(false);
@@ -544,12 +625,23 @@ export default function GovernmentImageToolPage({ tool }) {
     <h1>{tool.name}</h1>
     <p className="lead">{tool.description}</p>
     <div className="government-tool-local-note" role="note">
+      {!socialMediaTool && <strong className={`government-preset-status government-preset-status-${presetMode}`}>
+        {presetMode === 'custom' ? 'Custom settings from your current notice' : presetExpired ? 'Verified official notice has expired' : basePreset?.status === 'verified' ? 'Verified official preset' : 'Default example settings'}
+        {basePreset?.notificationNumber ? ` · ${basePreset.notificationNumber}` : ''}{basePreset?.lastUpdated ? ` · checked ${basePreset.lastUpdated}` : ''}
+      </strong>}
       <p>{socialMediaTool
         ? `${selectedSocialPreset.guidance}${socialProfileTool ? ' Profile photos are commonly shown as circles; check the preview after cropping.' : ''}`
-        : currentPreset?.note || currentGuidance?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
+        : presetMode === 'custom' ? `${currentGuidance?.note || basePreset?.note || 'Enter the dimensions, file format, resolution, and size limit from your current application notice.'} Custom values are user-configured and are not marked as official.`
+          : currentGuidance?.note || basePreset?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
       {officialSources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.label} ↗</a>)}
+      {!socialMediaTool && basePreset && <p className="government-preset-meta">{basePreset.recruitmentName || basePreset.label}{basePreset.postName ? ` · ${basePreset.postName}` : ''}{basePreset.notificationYear ? ` · ${basePreset.notificationYear}` : ''}{basePreset.width && basePreset.height ? ` · ${basePreset.width} × ${basePreset.height} px` : ''}{basePreset.minKb || basePreset.maxKb ? ` · ${basePreset.minKb ? `${basePreset.minKb}–` : 'up to '}${basePreset.maxKb || ''} KB` : ''}{basePreset.format ? ` · ${basePreset.format.toUpperCase()}` : ''}{basePreset.dpi ? ` · ${basePreset.dpi} DPI` : ''}{basePreset.validThrough ? ` · valid through ${basePreset.validThrough}` : ''}</p>}
       <p className="government-tool-privacy-note">Your image stays in this browser. Preset sizes, dimensions, frame handling, and output format can be changed before download.</p>
     </div>
+    {!socialMediaTool && <label className="government-inline-field government-preset-selector">Preset source<select className="form-select" value={presetMode} onChange={(event) => changePresetMode(event.target.value)}>
+      {['custom', 'custom-required'].includes(basePreset?.status)
+        ? <option value="custom">Enter settings from the current notice</option>
+        : <><option value={basePreset?.status === 'verified' ? 'verified' : 'example'}>{presetExpired ? 'Expired official notice (historical settings)' : basePreset?.status === 'verified' ? 'Verified official settings' : 'Default example settings'}</option><option value="custom">Custom settings from the current notice</option></>}
+    </select><small>Confirm the notice number, date, dimensions, format, size limits, and DPI with the recruiting authority before using an official preset.</small></label>}
     {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
 
     {socialMediaTool && <section className="government-tool-settings social-profile-settings" aria-labelledby="social-media-preset-title">
@@ -565,8 +657,8 @@ export default function GovernmentImageToolPage({ tool }) {
         const size = dimensions[slot.key];
         return <section className="government-tool-slot" key={slot.key} aria-labelledby={`${slot.key}-title`}>
           <h2 id={`${slot.key}-title`}>{slot.label}</h2>
-          <label className="government-file-label">Select {slot.label.toLowerCase()} (JPG or PNG)
-            <input type="file" accept="image/jpeg,image/png" onChange={(event) => selectFile(slot.key, event.target.files?.[0])}/>
+          <label className="government-file-label">Select {slot.label.toLowerCase()} (JPG, PNG, or WebP)
+            <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" onChange={(event) => selectFile(slot.key, event.target.files?.[0])}/>
           </label>
           {previews[slot.key] && <figure className={`government-image-preview${socialProfileTool ? ' social-profile-preview-frame' : ''}`}>
             {hasNameDateOption && addNameDate && (!pair || slot.key === 'photo') ? <div className="government-photo-name-date-preview">
@@ -599,8 +691,18 @@ export default function GovernmentImageToolPage({ tool }) {
 
     <section className="government-tool-settings" aria-labelledby="government-settings-title">
       <h2 id="government-settings-title">Image settings</h2>
+      {isPassportTool && <fieldset className="government-dimensions passport-print-settings"><legend>A4 print sheet settings</legend><div className="government-dimension-fields">
+        <label>Photo width (mm)<input className="form-control" type="number" min="1" max="100" step="0.1" value={printWidthMm} onChange={(event) => { clearPrintSheet(); setPrintWidthMm(event.target.value); }}/></label>
+        <label>Photo height (mm)<input className="form-control" type="number" min="1" max="100" step="0.1" value={printHeightMm} onChange={(event) => { clearPrintSheet(); setPrintHeightMm(event.target.value); }}/></label>
+        <label className="passport-copy-count">Copies on A4<select className="form-select" value={printCopies} onChange={(event) => { clearPrintSheet(); setPrintCopies(Number(event.target.value)); }}>{[1, 2, 4, 6, 8, 10, 12, 16, 20, 24, 30].map((count) => <option key={count} value={count}>{count}</option>)}</select></label>
+      </div><small>35 × 45 mm is a general passport-photo print preset, not a universal recruitment requirement. The sheet is created locally as a 300 DPI A4 PDF; print at 100% scale.</small></fieldset>}
       {!dpiMode && <label className="government-setting-check"><input type="checkbox" checked={maintainAspect} onChange={(event) => setMaintainAspect(event.target.checked)}/> Keep the selected aspect ratio when changing dimensions</label>}
-      <label className="government-inline-field">Frame handling<select className="form-select" value={fitMode} onChange={(event) => setFitMode(event.target.value)}><option value="cover">Crop to fill the frame</option><option value="contain">Fit the whole image inside the frame</option></select><small>Crop to fill trims edges to match the selected ratio. Fit keeps the full image and may add white space.</small></label>
+      <label className="government-inline-field">Frame handling<select className="form-select" value={fitMode} onChange={(event) => { clearResults(); setFitMode(event.target.value); }}><option value="cover">Crop to fill the frame</option><option value="contain">Fit the whole image inside the frame</option><option value="stretch">Stretch to fill the frame</option></select><small>Crop trims the edges. Fit keeps the whole image with space around it. Stretch fills the frame and may distort the image.</small></label>
+      <div className="government-transform-controls">
+        <label className="government-inline-field">Rotate<select className="form-select" value={rotation} onChange={(event) => { clearResults(); setRotation(Number(event.target.value)); }}><option value="0">No rotation</option><option value="90">90° clockwise</option><option value="180">180°</option><option value="270">270° clockwise</option></select></label>
+        <label className="government-setting-check"><input type="checkbox" checked={flipHorizontal} onChange={(event) => { clearResults(); setFlipHorizontal(event.target.checked); }}/> Flip horizontally</label>
+        <label className="government-setting-check"><input type="checkbox" checked={flipVertical} onChange={(event) => { clearResults(); setFlipVertical(event.target.checked); }}/> Flip vertically</label>
+      </div>
       {hasNameDateOption && <>
         <p className="small text-secondary">Kerala PSC OTR requires the applicant name and date of the photo at the bottom. Enter both to continue.</p>
         {addNameDate && <div className="government-name-date-fields">
@@ -610,26 +712,38 @@ export default function GovernmentImageToolPage({ tool }) {
         </div>}
       </>}
       {config.kind !== 'white-background' && !removeBackground && <label className="government-setting-check"><input type="checkbox" checked={whiteBackground} onChange={(event) => setWhiteBackground(event.target.checked)}/> Place transparent areas on a white background</label>}
+      {(config.kind === 'white-background' || fitMode === 'contain' || whiteBackground) && <label className="government-inline-field">Background color<input className="form-control form-control-color" type="color" value={backgroundColor} onChange={(event) => { clearResults(); setBackgroundColor(event.target.value); }}/><small>Used for empty frame areas and background replacement. Choose white when the notice requires it.</small></label>}
       {config.kind === 'white-background' && <>
         <p>Similar colors in the image corners are sampled and turned white. This works best with a plain, evenly lit background; inspect hair and clothing edges in the preview.</p>
         <label className="government-inline-field">Background color tolerance: {backgroundTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={backgroundTolerance} onChange={(event) => setBackgroundTolerance(event.target.value)}/></label>
       </>}
       {(config.crop || pair) && <label className="government-setting-check"><input type="checkbox" checked={trim} onChange={(event) => setTrim(event.target.checked)}/> Trim blank borders around the signature</label>}
-      {showSizeTarget && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter a maximum file size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}The output stays at or below this limit. Image clarity and selected dimensions are preserved as much as the size limit allows.</small></label>}
-      {dpiMode && <label className="government-inline-field">Resolution metadata (DPI)<input className="form-control" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/><small>DPI changes print-size metadata; it does not add detail or increase the pixel dimensions.</small></label>}
+      {showSizeTarget && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" list="government-image-kb-presets" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter a maximum file size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><datalist id="government-image-kb-presets">{[10, 20, 30, 50, 100, 200].map((size) => <option value={size} key={size}/>)}</datalist><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}This is a maximum. A smaller output is valid and may keep more detail; the tool does not add filler data to reach the limit.</small></label>}
+      {compression && !currentPreset?.width && !currentPreset?.minWidth && <label className="government-setting-check"><input type="checkbox" checked={allowDimensionReduction} onChange={(event) => setAllowDimensionReduction(event.target.checked)}/> Reduce dimensions automatically if needed to fit the size limit<small>Enable only when the current notice allows smaller pixel dimensions.</small></label>}
+      {!removeBackground && <label className="government-inline-field">JPEG image quality: {quality}%<input className="form-range" type="range" min="55" max="100" step="1" value={quality} disabled={format === 'png'} onChange={(event) => setQuality(Number(event.target.value))}/><small>{targetKb ? 'The encoder starts at the selected quality and lowers it only as needed to meet the maximum.' : 'This sets lossy JPEG encoding quality. PNG output ignores this slider.'} PNG output ignores this slider.</small></label>}
+      {dpiMode && <div className="government-inline-field"><label>Resolution metadata (DPI)<select className="form-select" value={dpiChoice} onChange={(event) => { setDpiChoice(event.target.value); if (event.target.value !== 'custom') setDpi(event.target.value); }}><option value="72">72 DPI</option><option value="96">96 DPI</option><option value="150">150 DPI</option><option value="200">200 DPI</option><option value="300">300 DPI</option><option value="600">600 DPI</option><option value="custom">Custom DPI</option></select></label>{dpiChoice === 'custom' && <input className="form-control" aria-label="Custom resolution in DPI" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/>}<small>DPI is print-size metadata. It does not add detail or change pixel dimensions unless you explicitly resize the image.</small></div>}
       {removeBackground && <label className="government-inline-field">White-background removal threshold: {backgroundThreshold}<input className="form-range" type="range" min="205" max="252" step="1" value={backgroundThreshold} onChange={(event) => setBackgroundThreshold(event.target.value)}/><small>Works best with a plain, near-white background. Inspect fine signature strokes before using the PNG.</small></label>}
       {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialMediaTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
     </section>
 
     <button className="btn btn-primary mt-4" type="button" onClick={process} disabled={busy || slots.some(({ key }) => !files[key])}>{busy ? 'Preparing image…' : pair ? 'Prepare photo and signature' : tool.name}</button>
+    {processingError && <p className="alert alert-warning mt-3" role="alert">{processingError}</p>}
     {results.length > 0 && <section className="government-results" aria-labelledby="government-results-title" aria-live="polite">
       <h2 id="government-results-title">Preview and download</h2>
       <div className="government-results-grid">{results.map((result) => <article className="government-result-card" key={result.name}>
         <img className={socialProfileTool ? 'social-profile-result-image' : undefined} src={result.url} alt={`Processed ${result.name} preview`}/>
         <p>{result.width} × {result.height} px · {result.blob.size.toLocaleString()} bytes ({(result.blob.size / 1024).toFixed(1)} KB)</p>
-        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Maximum size not reached; actual size is ${result.blob.size.toLocaleString()} bytes. Increase the allowed maximum or use dimensions accepted by the current notice.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : `Within the ${Math.round(result.targetBytes / 1024)} KB limit: ${result.blob.size.toLocaleString()} bytes.`}</p>}
+        {showSizeTarget && result.targetBytes && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Maximum not met; actual size is ${result.blob.size.toLocaleString()} bytes. Increase the allowed maximum or use dimensions accepted by the current notice.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : `Maximum met: ${result.blob.size.toLocaleString()} bytes (${(result.blob.size / 1024).toFixed(1)} KB), ${Math.abs(result.compressionPercent).toFixed(1)}% ${result.compressionPercent >= 0 ? 'smaller' : 'larger'} than the ${result.originalSize.toLocaleString()} byte original. A file smaller than the maximum is valid; unused bytes would not improve image clarity.`}</p>}
+        {compression && result.blob.type === 'image/jpeg' && result.encodedQuality != null && <p>JPEG encoding quality used: {Math.round(result.encodedQuality * 100)}%{result.width !== result.requestedWidth || result.height !== result.requestedHeight ? ` · output dimensions ${result.width} × ${result.height} px` : ''}</p>}
         <ProtectedDownload className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</ProtectedDownload>
       </article>)}</div>
+      {isPassportTool && <div className="passport-print-result">
+        <button className="btn btn-outline-primary" type="button" onClick={createPrintSheet} disabled={printSheetBusy}>{printSheetBusy ? 'Creating A4 sheet…' : 'Create A4 print sheet PDF'}</button>
+        {printSheetResult && <>
+          <div className="passport-print-preview" aria-label={`${printCopies} passport photos on an A4 print sheet`}>{Array.from({ length: printCopies }, (_, index) => <img key={index} src={results[0]?.url} alt="Passport photo on A4 sheet"/>)}</div>
+          <div className="passport-print-actions"><a className="btn btn-outline-secondary" href={printSheetResult.url} target="_blank" rel="noreferrer">Open print preview</a><ProtectedDownload className="btn btn-primary" href={printSheetResult.url} download={printSheetResult.name}>Download print-ready PDF</ProtectedDownload></div>
+        </>}
+      </div>}
     </section>}
     <p className="government-tool-reminder">Before submitting, compare the downloaded image's dimensions, format, file size, background, and any other rules against the official application instructions.</p>
   </main>;

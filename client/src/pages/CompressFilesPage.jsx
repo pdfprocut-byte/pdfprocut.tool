@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import FileUploader from '../components/pdf/FileUploader.jsx';
@@ -8,8 +8,9 @@ import UploadedFileList from '../components/pdf/UploadedFileList.jsx';
 import { useBrowserDraft } from '../lib/browserDraft.js';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const PdfPagePreview = lazy(() => import('../components/pdf/PdfPagePreview.jsx'));
 const targetOptions = [
-  ['0.0009765625', '1 KB'], ['0.048828125', '50 KB'], ['0.09765625', '100 KB'], ['0.1953125', '200 KB'], ['0.25', '250 KB'], ['0.5', '500 KB'], ['1', '1 MB'], ['2', '2 MB'],
+  ['0.009765625', '10 KB'], ['0.01953125', '20 KB'], ['0.029296875', '30 KB'], ['0.048828125', '50 KB'], ['0.09765625', '100 KB'], ['0.1953125', '200 KB'], ['0.25', '250 KB'], ['0.5', '500 KB'], ['1', '1 MB'], ['2', '2 MB'],
   ['5', '5 MB'], ['10', '10 MB'], ['20', '20 MB'], ['24', '24 MB'], ['custom', 'Custom size']
 ];
 const unitToMb = { KB: 1 / 1024, MB: 1 };
@@ -21,15 +22,17 @@ export default function CompressFilesPage({ tool }) {
   const [customTarget, setCustomTarget] = useState('1.5');
   const [customTargetUnit, setCustomTargetUnit] = useState('MB');
   const [quality, setQuality] = useState('clear');
+  const [allowImageOnlyOptimization, setAllowImageOnlyOptimization] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
-  const draft = { state: { targetChoice, customTarget, customTargetUnit, quality }, files: file ? [file] : [], signature: null };
+  const draft = { state: { targetChoice, customTarget, customTargetUnit, quality, allowImageOnlyOptimization }, files: file ? [file] : [], signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(`tool:${tool.slug}`, draft, (saved) => {
     setFile(saved.files[0] || null);
     if (saved.state?.targetChoice) setTargetChoice(saved.state.targetChoice);
     if (saved.state?.customTarget) setCustomTarget(saved.state.customTarget);
     if (saved.state?.customTargetUnit === 'KB' || saved.state?.customTargetUnit === 'MB') setCustomTargetUnit(saved.state.customTargetUnit);
     if (saved.state?.quality) setQuality(saved.state.quality);
+    if (saved.state?.allowImageOnlyOptimization !== undefined) setAllowImageOnlyOptimization(saved.state.allowImageOnlyOptimization);
   });
 
   useEffect(() => () => {
@@ -37,6 +40,7 @@ export default function CompressFilesPage({ tool }) {
   }, [result]);
 
   const targetSizeMb = targetChoice === 'custom' ? Number(customTarget) * unitToMb[customTargetUnit] : Number(targetChoice);
+  const isPdf = Boolean(file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')));
   const changeCustomTargetUnit = (nextUnit) => {
     const value = Number(customTarget);
     if (Number.isFinite(value) && value > 0) {
@@ -56,6 +60,7 @@ export default function CompressFilesPage({ tool }) {
       body.append('files', file);
       body.append('targetSizeMb', String(targetSizeMb));
       body.append('quality', quality);
+      body.append('imageOnlyOptimization', String(isPdf && allowImageOnlyOptimization));
       const response = await fetch(`${apiBase}/pdf/compress`, { method: 'POST', body, credentials: 'include' });
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
@@ -63,13 +68,16 @@ export default function CompressFilesPage({ tool }) {
       }
       const blob = await response.blob();
       const extension = file.name.split('.').pop().toLowerCase();
+      const resultName = createDownloadName(file, extension);
       setResult({
         url: URL.createObjectURL(blob),
-        name: createDownloadName(file, extension),
+        name: resultName,
         originalSize: file.size,
         outputSize: blob.size,
         targetMet: response.headers.get('X-Target-Met') === 'true',
-        rasterized: response.headers.get('X-PDF-Rasterized') === 'true'
+        rasterized: response.headers.get('X-PDF-Rasterized') === 'true',
+        previewFile: isPdf ? new File([blob], resultName, { type: 'application/pdf' }) : null,
+        compressionPercent: file.size ? ((file.size - blob.size) / file.size) * 100 : 0
       });
       toast.success('Compressed file is ready');
     } catch (error) {
@@ -83,23 +91,26 @@ export default function CompressFilesPage({ tool }) {
 
   return <main className="container py-5 tool-page">
     <Link to="/tools" className="back">← All tools</Link>
-    <h2>{tool.name}</h2>
+    <h1>{tool.name}</h1>
     <p className="lead">Choose a maximum file size for a PDF or a modern Word, Excel, or PowerPoint file.</p>
     {tool.gov?.kind === 'pdf-compress' && <p className="government-tool-local-note" role="note">This document is sent to the PDF Pro Cut server for compression. Confirm the current application limit and review the compressed file before submitting it.</p>}
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    <div className="alert alert-warning" role="note">Compression tries to preserve clarity while keeping the output at or below your selected maximum. If it cannot reach the limit at the chosen quality, choose a larger maximum or a stronger compression setting. PDF pages may become images, so text may no longer be selectable. The original stays unchanged.</div>
+    <div className="alert alert-warning" role="note">Compression keeps the original unchanged and reports the actual output size. PDF optimization preserves selectable text and page dimensions by default, so some PDFs may not shrink enough to meet a very small limit.</div>
     <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); }}/>
     {file && <UploadedFileList files={file}/>}
+    {file && isPdf && <section className="compression-preview-panel" aria-label="Original PDF preview"><h3>Original PDF preview</h3><Suspense fallback={<p role="status">Loading PDF preview…</p>}><PdfPagePreview file={file} selectedPages={[]} interactive={false}/></Suspense></section>}
+    {isPdf && <label className="compression-image-only-option"><input type="checkbox" checked={allowImageOnlyOptimization} onChange={(event) => setAllowImageOnlyOptimization(event.target.checked)}/> Allow image-based compression for scanned PDFs when safe</label>}
+    {isPdf && allowImageOnlyOptimization && <p className="small text-secondary">This option is used only when every page contains scanned images without selectable text, annotations, digital signatures, rotation, or cropped page bounds. It keeps page dimensions, but the output pages become images and may lose fine detail.</p>}
     <label className="mt-3">Maximum output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
         {targetOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
     </label>
-    <label className="mt-3">Compression quality<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
+    {(!isPdf || allowImageOnlyOptimization) && <label className="mt-3">Compression quality<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
         <option value="clear">High clarity first</option>
         <option value="balanced">Balanced</option>
         <option value="smallest">Smallest size (lower clarity)</option>
       </select>
-    </label>
+    </label>}
     {targetChoice === 'custom' && <div className="mt-3">
       <label htmlFor="document-compression-target">Custom maximum size</label>
       <div className="input-group">
@@ -113,12 +124,13 @@ export default function CompressFilesPage({ tool }) {
     <button className="btn btn-primary mt-4" type="button" onClick={compress} disabled={busy || !file}>
       {busy ? 'Compressing…' : 'Compress file'}
     </button>
+    {result?.previewFile && <section className="compression-preview-panel" aria-label="Compressed PDF preview"><h3>Compressed PDF preview</h3><Suspense fallback={<p role="status">Loading PDF preview…</p>}><PdfPagePreview file={result.previewFile} selectedPages={[]} interactive={false}/></Suspense></section>}
     <OperationProgressModal show={busy} title="PDF Pro Cut is compressing your file" description="Please wait while the file size is reduced."/>
     <DownloadResultModal href={result?.url} fileName={result?.name} toolSlug={tool.slug} title="PDF Pro Cut compressed your file" downloadLabel="Download compressed file" onClose={() => setResult(null)}>
       {result && <>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
           {result.targetMet ? `Maximum met: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Maximum not met. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
-          {' '}Original: {formatSize(result.originalSize)}.
+          {' '}Original: {formatSize(result.originalSize)}; {Math.abs(result.compressionPercent).toFixed(1)}% {result.compressionPercent >= 0 ? 'smaller' : 'larger'} output.
         </p>
         {result.rasterized && <p className="small text-warning">This PDF was rasterized to reduce its size; its text may no longer be selectable or searchable.</p>}
         {result.outputSize >= result.originalSize && !result.targetMet && <p className="small text-secondary">No smaller version could be produced at this quality. Try Balanced or Smallest.</p>}

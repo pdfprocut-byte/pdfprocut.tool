@@ -91,8 +91,10 @@ export const socialStoryPresets = [
   }
 ];
 
-export const governmentImagePresets = {
+const rawGovernmentImagePresets = {
   keralaPscPhoto: {
+    status: 'verified', agency: 'Kerala Public Service Commission', recruitmentName: 'Kerala PSC One Time Registration',
+    background: 'White or light plain background', lastUpdated: '2026-11-26',
     width: 150, height: 200, maxKb: 30, defaultTargetKb: 30, format: 'jpeg',
     label: 'Kerala PSC OTR photo', aspectLabel: '3:4', fitMode: 'cover',
     note: 'Kerala PSC OTR specifies 150 × 200 px, JPG, up to 30 KB, a white or light background, and the applicant name and photo date printed at the bottom. The name/date are required.',
@@ -101,6 +103,8 @@ export const governmentImagePresets = {
     nameDateInsideFrame: true
   },
   keralaPscSignature: {
+    status: 'verified', agency: 'Kerala Public Service Commission', recruitmentName: 'Kerala PSC One Time Registration',
+    background: 'White paper for source signature', lastUpdated: '2026-11-26',
     width: 150, height: 100, maxKb: 30, defaultTargetKb: 30, format: 'jpeg',
     label: 'Kerala PSC OTR signature', aspectLabel: '3:2', fitMode: 'contain',
     note: 'Kerala PSC OTR specifies 150 × 100 px JPG up to 30 KB. Keep the complete signature clear in the frame. The instructions allow a thumb impression instead of a signature for blind candidates.',
@@ -108,6 +112,8 @@ export const governmentImagePresets = {
     sourceUrl: 'https://www.keralapsc.gov.in/sites/default/files/inline-files/general_condition_revised.pdf'
   },
   sscLivePhoto: {
+    status: 'verified', agency: 'Staff Selection Commission', recruitmentName: 'SSC Stenographer Examination', notificationYear: 2026,
+    lastUpdated: '2026-11-26',
     format: 'jpeg',
     label: 'SSC live photo',
     note: 'SSC Stenographer 2026 requires a fresh live photo captured in the application module and publishes no universal pixel size. Do not capture an existing print or submit a processed download. The notice has an Aadhaar-based authentication exception; follow the instructions shown for your application route.',
@@ -115,6 +121,8 @@ export const governmentImagePresets = {
     sourceUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/NoticeBoards/Notice_of_adv_steno_2026.pdf'
   },
   sscSignature: {
+    status: 'verified', agency: 'Staff Selection Commission', recruitmentName: 'SSC Stenographer Examination', notificationYear: 2026,
+    postName: 'Stenographer Grade C and D', background: 'White paper for source signature', lastUpdated: '2026-11-26',
     width: 709, height: 236, maxKb: 20, minKb: 10, defaultTargetKb: 20, format: 'jpeg', dpi: 300,
     label: 'SSC signature', aspectLabel: '6 × 2 cm print size', fitMode: 'contain',
     note: 'SSC Stenographer 2026 specifies a horizontal JPG signature of about 6 × 2 cm and 10–20 KB. The 709 × 236 px canvas is a 300 DPI print-size conversion; the notice does not prescribe fixed pixel dimensions.',
@@ -122,6 +130,8 @@ export const governmentImagePresets = {
     sourceUrl: 'https://ssc.gov.in/api/attachment/uploads/masterData/Notice_of_adv_steno_2026.pdf'
   },
   upscUpload: {
+    status: 'verified', agency: 'Union Public Service Commission', recruitmentName: 'Engineering Services Examination Preliminary',
+    notificationNumber: '02/2027-ENGG', notificationYear: 2027, validThrough: '2026-10-06', lastUpdated: '2026-11-26',
     maxKb: 300, minKb: 20, defaultTargetKb: 300, format: 'jpeg',
     label: 'UPSC ESE 2027 photo or signature',
     note: 'The UPSC Engineering Services Examination 2027 notice requires each JPG photo and signature to be 20–300 KB. It gives no universal pixel dimensions; this preset keeps the source dimensions and targets 300 KB maximum.',
@@ -129,6 +139,8 @@ export const governmentImagePresets = {
     sourceUrl: 'https://www.upsc.gov.in/uploads/2026/09/Notif-ESEP-2027-Engl-160926.pdf'
   },
   rrbSignature: {
+    status: 'verified', agency: 'Railway Recruitment Boards', recruitmentName: 'CEN 09/2025 Level 1',
+    notificationNumber: 'CEN 09/2025', notificationYear: 2025, background: 'White paper with black ink', lastUpdated: '2026-11-26',
     width: 140, height: 60, minWidth: 140, minHeight: 60, minKb: 30, maxKb: 49, defaultTargetKb: 49,
     format: 'jpeg', dpi: 100, fitMode: 'contain',
     label: 'RRB signature', aspectLabel: 'minimum 140 × 60 px',
@@ -137,6 +149,7 @@ export const governmentImagePresets = {
     sourceUrl: 'https://www.rrbcdg.gov.in/uploads/2025/09-LVL1/092025-CEN.pdf'
   },
   passportPrint: {
+    status: 'example', agency: 'Passport Seva', recruitmentName: 'General passport photo print size', background: 'White',
     width: 413, height: 531, format: 'jpeg', dpi: 300, fitMode: 'cover',
     label: 'India passport photo print size', aspectLabel: '3.5 × 4.5 cm at 300 DPI',
     note: 'For Indian Passport Seva, a photo is generally captured at the PSK/POPSK; children below 4 and some collection-centre applications may need a 4.5 × 3.5 cm print. Overseas Passport Seva uses 630 × 810 px ICAO guidance and says the photo must be unaltered by software. This tool resizes/crops images, so its output is a sizing aid and is not certified for passport submission.',
@@ -148,6 +161,7 @@ export const governmentImagePresets = {
     ]
   },
   aadhaarPhoto: {
+    status: 'custom-required', agency: 'Unique Identification Authority of India', recruitmentName: 'Aadhaar biometric photo update',
     format: 'jpeg',
     label: 'Aadhaar biometric photo',
     note: 'UIDAI photo changes are biometric updates captured at an Aadhaar Enrolment Centre or Aadhaar Seva Kendra. UIDAI does not publish a resident self-upload photo size. This local image tool cannot prepare an Aadhaar photo update for online submission.',
@@ -155,6 +169,8 @@ export const governmentImagePresets = {
     sourceUrl: 'https://www.uidai.gov.in/en/aadhaar-seva-kendra'
   },
   panPhoto: {
+    status: 'verified', agency: 'Income Tax Department / Protean eGov Technologies', recruitmentName: 'PAN Form 93 individual application',
+    notificationYear: 2026, background: 'White', lastUpdated: '2026-11-26',
     width: 413, height: 531, format: 'jpeg', dpi: 300, fitMode: 'cover',
     label: 'PAN Form 93 photo', aspectLabel: '3.5 × 4.5 cm at 300 DPI',
     note: 'Protean Form 93 instructions require two recent colour photographs with a white background, 4.5 × 3.5 cm (portrait), for individual applications submitted with physical documents. This 300 DPI conversion is 413 × 531 px. Paperless e-KYC/e-Sign routes may not require physical documents.',
@@ -166,18 +182,46 @@ export const governmentImagePresets = {
       { label: 'Protean PAN application service', url: 'https://tinpan.proteantech.in/services/pan/pan-index' }
     ]
   },
-  genericPhoto: PHOTO_35_BY_45,
+  genericPhoto: { ...PHOTO_35_BY_45, status: 'example', recruitmentName: 'General 35 × 45 mm print-size example' },
   noticeSpecificImage: {
+    status: 'custom-required', recruitmentName: 'Dimensions from your current notice',
     format: 'jpeg',
     label: 'Dimensions from your current notice',
     note: 'There is no single photo, signature, or document size for every agency or recruitment. The tool keeps the source dimensions until you enter the exact values from the current official notice.'
   },
   genericSignature: {
+    status: 'example', recruitmentName: 'General signature print-size example',
     width: 709, height: 236, format: 'jpeg', dpi: 300,
     label: '6 × 2 cm signature at 300 DPI', aspectLabel: '3:1',
     note: 'A 6 × 2 cm print-size conversion at 300 DPI (709 × 236 px). Treat it as a starting size only; use the dimensions, file format, and size limit in your current application notice.'
   }
 };
+
+const presetSchemaDefaults = {
+  status: 'example', authority: null, recruitmentAuthority: null, agency: null, recruitmentName: null, postName: null,
+  notificationNumber: null, notificationYear: null, width: null, height: null,
+  minKb: null, maxKb: null, format: null, dpi: null, signatureWidth: null,
+  signatureHeight: null, thumbWidth: null, thumbHeight: null, background: null,
+  validThrough: null, officialUrl: null, lastUpdated: null
+};
+
+export const governmentImagePresets = Object.fromEntries(Object.entries(rawGovernmentImagePresets).map(([id, preset]) => {
+  const label = preset.label || preset.recruitmentName || id;
+  const imageKind = label.toLowerCase();
+  return [id, {
+    ...presetSchemaDefaults,
+    ...preset,
+    agency: preset.agency || null,
+    recruitmentAuthority: preset.recruitmentAuthority || preset.agency || null,
+    recruitmentName: preset.recruitmentName || label,
+    signatureWidth: preset.signatureWidth ?? (imageKind.includes('signature') ? preset.width ?? null : null),
+    signatureHeight: preset.signatureHeight ?? (imageKind.includes('signature') ? preset.height ?? null : null),
+    thumbWidth: preset.thumbWidth ?? (imageKind.includes('thumb') ? preset.width ?? null : null),
+    thumbHeight: preset.thumbHeight ?? (imageKind.includes('thumb') ? preset.height ?? null : null),
+    officialUrl: preset.officialUrl || preset.sourceUrl || null,
+    lastUpdated: preset.lastUpdated || null
+  }];
+}));
 export const governmentPresetByTool = {
   'kerala-psc-photo-resizer': 'keralaPscPhoto',
   'psc-photo-kb-compressor': 'keralaPscPhoto',

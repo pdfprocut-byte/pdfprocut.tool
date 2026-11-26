@@ -26,7 +26,14 @@ const ExtraPdfToolPage = lazy(() => import('./ExtraPdfToolPage.jsx'));
 export default function ToolPage() {
   const { slug } = useParams();
   const tool = tools.find((item) => item.slug === slug);
+  const breadcrumbItems = tool ? [
+    { name: 'Home', item: 'https://pdfprocut.com/' },
+    { name: 'Tools', item: 'https://pdfprocut.com/tools' },
+    { name: tool.name, item: `https://pdfprocut.com/tools/${tool.slug}` }
+  ] : [];
+  const breadcrumbSchema = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems.map(({ name, item }, index) => ({ '@type': 'ListItem', position: index + 1, name, item })) };
   return <div className={`tool-workspace${tool ? ` ${getToolCategoryClass(tool.category)}` : ''}`}>
+    {tool && <><nav className="tool-breadcrumb container" aria-label="Breadcrumb"><ol><li><Link to="/">Home</Link></li><li><Link to="/tools">Tools</Link></li><li aria-current="page">{tool.name}</li></ol></nav><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema).replaceAll('<', '\\u003c') }}/></>}
     <ToolPageContent key={slug} tool={tool}/>
   </div>;
 }

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 import { homeSeo, pageSeo } from '../../shared/pageSeo.mjs';
+import { toolGuides } from '../../shared/toolGuides.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = path.resolve(scriptDir, '..');
@@ -44,7 +45,19 @@ function makePageHtml(template, { route, metadata, tool }) {
     const links = toolCatalog.map(({ slug, name }) => `<li><a href="/tools/${escapeHtml(slug)}">${escapeHtml(name)}</a></li>`).join('');
     content = `<main class="seo-route-fallback"><h1>Public Service, PDF and Social Media Tools</h1><p>${description}</p><ul>${links}</ul></main>`;
   } else if (tool) {
-    content = `<main class="seo-route-fallback"><h1>${escapeHtml(tool.name)} Online</h1><p>${escapeHtml(tool.description)}</p><p>Use this browser-based tool to prepare your file, adjust the available settings, and download the result.</p><a href="/tools">Browse all PDF Pro Cut tools</a></main>`;
+    const breadcrumbItems = [
+      { name: 'Home', item: 'https://pdfprocut.com/' },
+      { name: 'Tools', item: 'https://pdfprocut.com/tools' },
+      { name: tool.name, item: canonical }
+    ];
+    const breadcrumbSchema = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: breadcrumbItems.map(({ name, item }, index) => ({ '@type': 'ListItem', position: index + 1, name, item })) };
+    const faqs = toolGuides[tool.slug]?.faqs || (tool.gov && tool.category !== 'Social Media' ? [
+      { question: `Does ${tool.name} guarantee that my file meets the current application rules?`, answer: 'No. Requirements vary by agency, post, route, and recruitment cycle. Check the current official notice and the downloaded file before submitting.' },
+      { question: `Does ${tool.name} upload my source image?`, answer: tool.endpoint === 'government-image' ? 'No. Image processing runs in your browser; the source image is not uploaded for this tool.' : 'Document compression sends the selected file to the PDF Pro Cut server for processing. Review the Privacy Policy before using it with sensitive documents.' }
+    ] : []);
+    const faqSchema = faqs.length ? { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map(({ question, answer }) => ({ '@type': 'Question', name: question, acceptedAnswer: { '@type': 'Answer', text: answer } })) } : null;
+    const jsonLd = [breadcrumbSchema, ...(faqSchema ? [faqSchema] : [])].map((schema) => `<script type="application/ld+json">${JSON.stringify(schema).replaceAll('<', '\\u003c')}</script>`).join('');
+    content = `<nav class="tool-breadcrumb container" aria-label="Breadcrumb"><ol><li><a href="/">Home</a></li><li><a href="/tools">Tools</a></li><li aria-current="page">${escapeHtml(tool.name)}</li></ol></nav>${jsonLd}<main class="seo-route-fallback"><h1>${escapeHtml(tool.name)} Online</h1><p>${escapeHtml(tool.description)}</p><h2>Check the current application requirements</h2><p>Use the dimensions, file type, background, and maximum size stated in the latest official notice, then review the processed file before submitting it.</p><p>Prepare a file in this browser and download the result from PDF Pro Cut.</p><a href="/tools">Browse all PDF Pro Cut tools</a></main>`;
   } else {
     const heading = metadata.title.split('|')[0].trim();
     content = `<main class="seo-route-fallback"><h1>${escapeHtml(heading)}</h1><p>${description}</p><a href="/tools">Browse all tools</a></main>`;

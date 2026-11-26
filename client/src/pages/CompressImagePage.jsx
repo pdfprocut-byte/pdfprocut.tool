@@ -10,7 +10,7 @@ import '../styles/imageCompression.css';
 
 const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 const targetOptions = [
-  ['0.09765625', '100 KB'], ['0.25', '250 KB'], ['0.5', '500 KB'], ['1', '1 MB'],
+  ['0.009765625', '10 KB'], ['0.01953125', '20 KB'], ['0.029296875', '30 KB'], ['0.048828125', '50 KB'], ['0.09765625', '100 KB'], ['0.1953125', '200 KB'], ['0.25', '250 KB'], ['0.5', '500 KB'], ['1', '1 MB'],
   ['2', '2 MB'], ['5', '5 MB'], ['10', '10 MB'], ['20', '20 MB'], ['custom', 'Custom size']
 ];
 const unitToMb = { KB: 1 / 1024, MB: 1 };
@@ -155,7 +155,7 @@ export default function CompressImagePage({ tool }) {
   };
 
   const compress = async () => {
-    if (!file) return toast.error('Select a JPG or PNG image first');
+    if (!file) return toast.error('Select a JPG, PNG, or WebP image first');
     if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) return toast.error('Enter a maximum file size between 1 KB and 25 MB');
     const width = Number(dimensions.width);
     const height = Number(dimensions.height);
@@ -180,6 +180,7 @@ export default function CompressImagePage({ tool }) {
         name: createDownloadName(file, extension),
         originalSize: file.size,
         outputSize: blob.size,
+        compressionPercent: file.size ? ((file.size - blob.size) / file.size) * 100 : 0,
         outputWidth: Number(response.headers.get('X-Output-Width')) || width,
         outputHeight: Number(response.headers.get('X-Output-Height')) || height,
         targetMet: response.headers.get('X-Target-Met') === 'true',
@@ -198,7 +199,7 @@ export default function CompressImagePage({ tool }) {
   return <main className="container py-5 tool-page">
     <Link to="/tools" className="back">← All tools</Link>
     <h2>{tool.name}</h2>
-    <p className="lead">Resize a JPG or PNG image and keep it within a selected maximum file size.</p>
+    <p className="lead">Resize a JPG, PNG, or WebP image and keep it within a selected maximum file size.</p>
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
     <div className="alert alert-info" role="note">The compressor chooses the clearest result it can fit under your maximum. If the image cannot fit without more quality loss, the tool reports that instead of enlarging the file. A PNG larger than the target may be saved as JPEG, so transparent areas become white.</div>
     <FileUploader tool={tool} onFiles={selectFile}/>
@@ -243,7 +244,7 @@ export default function CompressImagePage({ tool }) {
       {result && <>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
           {result.targetMet ? `Maximum met: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Maximum not met. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
-          {' '}Original: {formatSize(result.originalSize)}. Output: {result.outputWidth} × {result.outputHeight} px.
+          {' '}Original: {formatSize(result.originalSize)}; {Math.abs(result.compressionPercent).toFixed(1)}% {result.compressionPercent >= 0 ? 'smaller' : 'larger'} output. Output: {result.outputWidth} × {result.outputHeight} px.
         </p>
       </>}
     </DownloadResultModal>

@@ -1,5 +1,5 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { PDFDocument } from 'pdf-lib';
 import { unzipSync, zipSync } from 'fflate';
 import { extname } from 'node:path';
@@ -37,16 +37,9 @@ const officeImageLevels = {
   ]
 };
 const pdfImageLevels = {
-  clear: [
-    { scale: 2.4, quality: 0.95 }, { scale: 1.85, quality: 0.9 },
-    { scale: 1.45, quality: 0.85 }, { scale: 1.25, quality: 0.82 }
-  ],
-  balanced: [{ scale: 1.65, quality: 0.9 }, { scale: 1.45, quality: 0.86 }, { scale: 1.25, quality: 0.82 }],
-  smallest: [
-    { scale: 1.4, quality: 0.82 }, { scale: 1.15, quality: 0.72 },
-    { scale: 0.92, quality: 0.62 }, { scale: 0.72, quality: 0.5 },
-    { scale: 0.55, quality: 0.4 }
-  ]
+  clear: [{ scale: 1.8, quality: 0.93 }, { scale: 1.5, quality: 0.9 }, { scale: 1.25, quality: 0.86 }, { scale: 1.05, quality: 0.82 }],
+  balanced: [{ scale: 1.5, quality: 0.88 }, { scale: 1.25, quality: 0.82 }, { scale: 1.05, quality: 0.76 }, { scale: 0.9, quality: 0.7 }],
+  smallest: [{ scale: 1.25, quality: 0.78 }, { scale: 1.05, quality: 0.7 }, { scale: 0.9, quality: 0.62 }, { scale: 0.75, quality: 0.54 }, { scale: 0.6, quality: 0.45 }]
 };
 
 function jpegEncoderQuality(quality) {
@@ -178,68 +171,113 @@ async function compressOfficeArchive(file, extension, targetBytes, quality) {
   return { buffer: best, type: packageInfo.contentType };
 }
 
-async function compressPdf(file, targetBytes, quality) {
-  if (file.buffer.length <= targetBytes) return { buffer: file.buffer, type: 'application/pdf', rasterized: false };
-
-  let best = file.buffer;
+async function compressScannedImagePdf(file, targetBytes, quality, sourceDocument) {
   let pdfDocument;
-  let sourceDocument;
-  let normalized = file.buffer;
   try {
-    sourceDocument = await PDFDocument.load(file.buffer);
-    normalized = Buffer.from(await sourceDocument.save({ useObjectStreams: true }));
-    if (normalized.length < best.length) best = normalized;
-    if (best.length <= targetBytes) return { buffer: best, type: 'application/pdf', rasterized: false };
-
     pdfDocument = await getDocument({ data: new Uint8Array(file.buffer), isEvalSupported: false }).promise;
     if (pdfDocument.numPages > maxPages) throw new ApiError(413, `PDF compression supports up to ${maxPages} pages per file`);
+    const imageOps = [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject, OPS.paintJpegXObject, OPS.paintImageXObjectRepeat, OPS.paintImageMaskXObjectRepeat].filter(Number.isInteger);
+    const allowedOps = [
+      OPS.save, OPS.restore, OPS.transform, OPS.setGState, OPS.dependency, OPS.beginMarkedContent,
+      OPS.beginMarkedContentProps, OPS.endMarkedContent,
+      ...imageOps
+    ].filter(Number.isInteger);
+    const allowedOpSet = new Set(allowedOps);
+    const sourcePages = sourceDocument.getPages();
+    const pageData = [];
+    for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
+      const renderedPage = await pdfDocument.getPage(pageNumber);
+      const textContent = await renderedPage.getTextContent();
+      const annotations = await renderedPage.getAnnotations({ intent: 'display' });
+      const operatorList = await renderedPage.getOperatorList();
+      const hasText = textContent.items.some((item) => typeof item.str === 'string' && item.str.trim().length > 0);
+      const hasImage = operatorList.fnArray.some((operation) => imageOps.includes(operation));
+      const hasUnsupportedContent = operatorList.fnArray.some((operation) => !allowedOpSet.has(operation));
+      const sourcePage = sourcePages[pageNumber - 1];
+      const mediaBox = sourcePage.getMediaBox();
+      const cropBox = sourcePage.getCropBox();
+      const sameBounds = Math.abs(mediaBox.x - cropBox.x) < 0.01 && Math.abs(mediaBox.y - cropBox.y) < 0.01
+        && Math.abs(mediaBox.width - cropBox.width) < 0.01 && Math.abs(mediaBox.height - cropBox.height) < 0.01;
+      if (hasText || annotations.length || !hasImage || hasUnsupportedContent || renderedPage.rotate !== 0 || !sameBounds) {
+        throw new ApiError(422, 'Image-based optimization is available only for scanned PDFs containing images alone, with no selectable text, annotations, rotated pages, or cropped page bounds. The original was left unchanged.');
+      }
+      pageData.push({ renderedPage, width: mediaBox.width, height: mediaBox.height });
+    }
+
     const levels = compressionLevels(pdfImageLevels[quality], quality === 'smallest' ? [] : pdfImageLevels.smallest);
+    let best = null; let bestScore = -1;
     for (const level of levels) {
       const compressed = await PDFDocument.create();
-      for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-        const page = await pdfDocument.getPage(pageNumber);
-        const baseViewport = page.getViewport({ scale: 1 });
-        const pixelLimitScale = Math.sqrt(maxPixelsPerPdfPage / (baseViewport.width * baseViewport.height));
+      for (const { renderedPage, width, height } of pageData) {
+        const pixelLimitScale = Math.sqrt(maxPixelsPerPdfPage / (width * height));
         const scale = Math.min(level.scale, pixelLimitScale);
-        const viewport = page.getViewport({ scale });
+        const viewport = renderedPage.getViewport({ scale });
         const canvas = createCanvas(Math.max(1, Math.ceil(viewport.width)), Math.max(1, Math.ceil(viewport.height)));
         try {
-          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          await renderedPage.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
           const jpeg = canvas.toBuffer('image/jpeg', jpegEncoderQuality(level.quality));
           const embeddedImage = await compressed.embedJpg(jpeg);
-          const pageWidth = viewport.width / scale;
-          const pageHeight = viewport.height / scale;
-          const outputPage = compressed.addPage([pageWidth, pageHeight]);
-          outputPage.drawImage(embeddedImage, { x: 0, y: 0, width: pageWidth, height: pageHeight });
+          const outputPage = compressed.addPage([width, height]);
+          outputPage.drawImage(embeddedImage, { x: 0, y: 0, width, height });
         } finally {
-          page.cleanup();
-          canvas.width = 0;
-          canvas.height = 0;
+          canvas.width = 0; canvas.height = 0;
         }
       }
       const candidate = Buffer.from(await compressed.save({ useObjectStreams: true }));
-      if (candidate.length < best.length) best = candidate;
-      if (best.length <= targetBytes) return { buffer: best, type: 'application/pdf', rasterized: best !== normalized && best !== file.buffer };
+      const score = level.scale * level.quality;
+      if (candidate.length <= targetBytes && score > bestScore) { best = candidate; bestScore = score; }
     }
+    if (!best) throw new ApiError(422, 'This scanned PDF could not meet the maximum using the selected quality settings. Choose a larger maximum.');
+    const outputDocument = await PDFDocument.load(best, { updateMetadata: false });
+    const outputPages = outputDocument.getPages();
+    if (outputPages.length !== pageData.length || pageData.some((page, index) => {
+      const size = outputPages[index].getSize();
+      return Math.abs(page.width - size.width) >= 0.01 || Math.abs(page.height - size.height) >= 0.01;
+    })) throw new ApiError(422, 'PDF page dimensions changed during image optimization. The original was left unchanged.');
+    return { buffer: best, type: 'application/pdf', rasterized: true };
+  } finally {
+    if (pdfDocument) await pdfDocument.destroy().catch(() => {});
+  }
+}
+
+async function compressPdf(file, targetBytes, quality, allowImageOnlyOptimization) {
+  if (file.buffer.length <= targetBytes) return { buffer: file.buffer, type: 'application/pdf', rasterized: false };
+  if (/\/ByteRange\s*\[/i.test(file.buffer.toString('latin1'))) {
+    throw new ApiError(422, 'This PDF has a digital signature. Changing its bytes would invalidate it, so it cannot be compressed safely.');
+  }
+  if (/\/XFA\b/i.test(file.buffer.toString('latin1'))) {
+    throw new ApiError(422, 'This PDF contains an XFA form that cannot be safely rewritten by this compressor.');
+  }
+  try {
+    const sourceDocument = await PDFDocument.load(file.buffer, { updateMetadata: false });
+    if (sourceDocument.getPageCount() > maxPages) throw new ApiError(413, `PDF compression supports up to ${maxPages} pages per file`);
+    const originalSizes = sourceDocument.getPages().map((page) => page.getSize());
+    const normalized = Buffer.from(await sourceDocument.save({ useObjectStreams: true, updateFieldAppearances: false }));
+    const verifiedDocument = await PDFDocument.load(normalized, { updateMetadata: false });
+    const outputPages = verifiedDocument.getPages();
+    const dimensionsMatch = originalSizes.length === outputPages.length && originalSizes.every((size, index) => {
+      const outputSize = outputPages[index].getSize();
+      return Math.abs(size.width - outputSize.width) < 0.01 && Math.abs(size.height - outputSize.height) < 0.01;
+    });
+    if (!dimensionsMatch) throw new ApiError(422, 'PDF page dimensions changed during safe optimization. The original file was left untouched.');
+    if (normalized.length <= targetBytes) return { buffer: normalized, type: 'application/pdf', rasterized: false };
+    if (allowImageOnlyOptimization) return await compressScannedImagePdf(file, targetBytes, quality, sourceDocument);
+    throw new ApiError(422, `Safe PDF optimization produced a ${normalized.length.toLocaleString()} byte file, which is still above the selected maximum. This tool preserves text and page content instead of rasterizing the document; choose a larger maximum.`);
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error.name === 'PasswordException' || error.message?.toLowerCase().includes('password') || error.message?.toLowerCase().includes('encrypted')) {
       throw new ApiError(400, 'This PDF is password-protected. Unlock it before compressing.');
     }
-    if (sourceDocument || pdfDocument) throw new ApiError(422, 'Could not compress this PDF. Try a smaller, unprotected PDF.');
     throw new ApiError(422, 'Could not open this PDF. Upload a valid, unprotected PDF and try again.');
-  } finally {
-    if (pdfDocument) await pdfDocument.destroy().catch(() => {});
   }
-  return { buffer: best, type: 'application/pdf', rasterized: best !== normalized && best !== file.buffer };
 }
 
-export async function compressFile(file, targetSizeMb, quality = 'clear') {
+export async function compressFile(file, targetSizeMb, quality = 'clear', options = {}) {
   if (!['clear', 'balanced', 'smallest'].includes(quality)) throw new ApiError(400, 'Choose clear, balanced, or smallest compression quality');
   const targetBytes = Math.round(targetSizeMb * 1024 * 1024);
   const extension = extname(file.originalname || '').slice(1).toLowerCase();
   const result = extension === 'pdf'
-    ? await compressPdf(file, targetBytes, quality)
+    ? await compressPdf(file, targetBytes, quality, Boolean(options.imageOnlyOptimization))
     : await compressOfficeArchive(file, officeExtension(file), targetBytes, quality);
   if (result.buffer.length > targetBytes) {
     throw new ApiError(422, 'Could not reduce this file below the selected maximum without more quality loss. Choose a larger maximum or a stronger compression setting.');
@@ -249,13 +287,20 @@ export async function compressFile(file, targetSizeMb, quality = 'clear') {
 
 export async function compressImage(file, targetSizeMb, quality = 'clear', requestedDimensions = {}) {
   if (!['clear', 'balanced', 'smallest'].includes(quality)) throw new ApiError(400, 'Choose clear, balanced, or smallest compression quality');
-  if (!['image/jpeg', 'image/png'].includes(file.mimetype)) throw new ApiError(415, 'Image compression accepts JPG and PNG files');
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) throw new ApiError(415, 'Image compression accepts JPG, PNG, and WebP files');
   const extension = extname(file.originalname || '').slice(1).toLowerCase();
-  if (!['jpg', 'jpeg', 'png'].includes(extension) || (file.mimetype === 'image/png') !== (extension === 'png')) {
+  const expectedType = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[extension];
+  if (!expectedType || file.mimetype !== expectedType) {
     throw new ApiError(415, 'The image extension does not match its file type');
   }
-  const dimensions = readImageDimensions(file.buffer, extension);
-  if (!dimensions?.width || !dimensions?.height) throw new ApiError(415, 'Could not read this JPG or PNG image');
+  let image = null;
+  let dimensions = extension === 'webp' ? null : readImageDimensions(file.buffer, extension);
+  if (extension === 'webp') {
+    try { image = await loadImage(Buffer.from(file.buffer)); }
+    catch { throw new ApiError(415, 'Could not decode this WebP image'); }
+    dimensions = { width: image.width, height: image.height };
+  }
+  if (!dimensions?.width || !dimensions?.height) throw new ApiError(415, `Could not read this ${extension.toUpperCase()} image`);
   if (dimensions.width * dimensions.height > 40_000_000) throw new ApiError(413, 'Image compression supports images up to 40 megapixels');
 
   const width = requestedDimensions.width ?? dimensions.width;
@@ -266,14 +311,15 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
   const resized = width !== dimensions.width || height !== dimensions.height;
   const targetBytes = Math.round(targetSizeMb * 1024 * 1024);
   const sourceType = file.mimetype;
-  const type = sourceType === 'image/png' && file.buffer.length > targetBytes ? 'image/jpeg' : sourceType;
-  if (!resized && file.buffer.length <= targetBytes) {
+  const type = sourceType === 'image/webp' || (sourceType === 'image/png' && file.buffer.length > targetBytes) ? 'image/jpeg' : sourceType;
+  if (!resized && sourceType !== 'image/webp' && file.buffer.length <= targetBytes) {
     return { buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height };
   }
 
-  let image;
-  try { image = await loadImage(Buffer.from(file.buffer)); }
-  catch { throw new ApiError(415, 'Could not decode this JPG or PNG image'); }
+  if (!image) {
+    try { image = await loadImage(Buffer.from(file.buffer)); }
+    catch { throw new ApiError(415, `Could not decode this ${extension.toUpperCase()} image`); }
+  }
   const qualityLevels = type === 'image/png'
     ? [100]
     : quality === 'clear'

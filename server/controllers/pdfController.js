@@ -37,7 +37,7 @@ export const compress = asyncHandler(async(req,res)=>{
   const targetSizeMb = Number(req.body.targetSizeMb);
   if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) throw new ApiError(400, 'Choose a target size between 1 KB and 25 MB');
   const quality = String(req.body.quality || 'clear');
-  const result = await compression.compressFile(uploaded, targetSizeMb, quality);
+  const result = await compression.compressFile(uploaded, targetSizeMb, quality, { imageOnlyOptimization: req.body.imageOnlyOptimization === 'true' });
   const extension = String(uploaded.originalname || '').split('.').at(-1).toLowerCase();
   const targetBytes = Math.round(targetSizeMb * 1024 * 1024);
   res.set({
