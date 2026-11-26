@@ -20,14 +20,14 @@ function formatPhotoDate(dateValue) {
 }
 
 function drawPhotoFooter(context, width, height, { name, date }) {
-  const footerHeight = Math.max(20, Math.round(height * 0.12));
+  const footerHeight = Math.max(30, Math.round(height * 0.15));
   const imageAreaHeight = Math.max(1, height - footerHeight);
   context.fillStyle = '#fff';
   context.fillRect(0, imageAreaHeight, width, footerHeight);
   context.fillStyle = '#111';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  const fontSize = Math.max(6, Math.min(footerHeight * 0.34, width * 0.07));
+  const fontSize = Math.max(9, Math.min(footerHeight * 0.34, width * 0.07));
   context.font = `700 ${fontSize}px Arial, sans-serif`;
   context.fillText(name.trim().toLocaleUpperCase(), width / 2, imageAreaHeight + footerHeight * 0.31, Math.max(1, width - 6));
   context.font = `700 ${Math.max(7, fontSize * 0.9)}px Arial, sans-serif`;
@@ -38,6 +38,32 @@ function canvasBlob(canvas, type, quality) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Your browser could not create this image.')), type, quality);
   });
+}
+
+async function padJpegToSize(blob, targetBytes) {
+  if (blob.type !== 'image/jpeg' || blob.size >= targetBytes) return blob;
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let endMarker = -1;
+  for (let index = bytes.length - 2; index >= 0; index -= 1) {
+    if (bytes[index] === 0xff && bytes[index + 1] === 0xd9) { endMarker = index; break; }
+  }
+  if (endMarker < 0) return blob;
+
+  let remaining = targetBytes - bytes.length;
+  const parts = [bytes.slice(0, endMarker)];
+  while (remaining >= 4) {
+    let segmentSize = Math.min(remaining, 65_537);
+    const leftover = remaining - segmentSize;
+    if (leftover > 0 && leftover < 4) segmentSize -= 4 - leftover;
+    const payloadSize = segmentSize - 4;
+    const segment = new Uint8Array(segmentSize);
+    segment.set([0xff, 0xfe, ((payloadSize + 2) >> 8) & 255, (payloadSize + 2) & 255]);
+    segment.fill(0x20, 4);
+    parts.push(segment);
+    remaining -= segmentSize;
+  }
+  parts.push(bytes.slice(endMarker));
+  return new Blob(parts, { type: 'image/jpeg' });
 }
 
 async function findContentBounds(imageData, width, height, threshold = 245) {
@@ -185,7 +211,7 @@ async function prepareImage(file, options) {
     if (!Number.isInteger(requestedWidth) || !Number.isInteger(requestedHeight) || requestedWidth < 1 || requestedHeight < 1 || requestedWidth * requestedHeight > maxPixels) {
       throw new Error('Enter positive image dimensions with no more than 30 megapixels total.');
     }
-    const footerHeight = options.photoFooter ? Math.max(20, Math.round(requestedHeight * 0.12)) : 0;
+    const footerHeight = options.photoFooter ? Math.max(30, Math.round(requestedHeight * 0.15)) : 0;
     const imageAreaHeight = Math.max(1, requestedHeight - footerHeight);
     if (options.fitMode === 'cover') {
       const targetRatio = requestedWidth / requestedHeight;
@@ -247,6 +273,10 @@ async function prepareImage(file, options) {
     }
 
     if (!best) throw new Error('Could not fit this image under the selected maximum without reducing its dimensions or clarity further. Choose a larger maximum or dimensions allowed by the current notice.');
+    if (options.photoFooter && options.targetBytes && format === 'image/jpeg') {
+      // Keep the best encoded pixels, then use a JPEG comment to reach about 1 KB below the upload ceiling.
+      best = await padJpegToSize(best, Math.max(1024, options.targetBytes - 1024));
+    }
     return { blob: best, width: bestWidth, height: bestHeight, targetMet, originalWidth: bitmap.width, originalHeight: bitmap.height };
   } finally {
     bitmap.close();
