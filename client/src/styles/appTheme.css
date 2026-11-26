@@ -1001,7 +1001,7 @@ html, body, #root { min-height: 100%; }
 }
 
 .pdfpro-navbar .pdfpro-navbar-toggler {
-  display: grid;
+  display: none;
   width: 54px;
   height: 46px;
   place-items: center;
@@ -1084,4 +1084,5 @@ html, body, #root { min-height: 100%; }
   .pdfpro-tool-section-nav { row-gap: .45rem; }
   .pdfpro-section-menu { margin-block: .1rem; }
   .pdfpro-navbar .pdfpro-tools-dropdown-toggle { width: 2.4rem; height: 2.4rem; }
+  .pdfpro-navbar .pdfpro-navbar-toggler { display: grid; }
 }
