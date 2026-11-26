@@ -1086,3 +1086,37 @@ html, body, #root { min-height: 100%; }
   .pdfpro-navbar .pdfpro-tools-dropdown-toggle { width: 2.4rem; height: 2.4rem; }
   .pdfpro-navbar .pdfpro-navbar-toggler { display: grid; }
 }
+
+@media (min-width: 992px) {
+  .pdfpro-navbar .pdfpro-primary-nav {
+    gap: .38rem !important;
+    padding: .36rem .5rem;
+  }
+
+  .pdfpro-navbar .pdfpro-primary-nav > .nav-link { padding-inline: .68rem; }
+  .pdfpro-navbar .pdfpro-tool-section-nav { gap: .12rem; margin-inline: .3rem; padding-left: .38rem; }
+  .pdfpro-navbar .pdfpro-section-trigger-row { column-gap: .12rem; }
+  .pdfpro-navbar .pdfpro-section-menu .pdfpro-section-link { padding-inline: .42rem; }
+  .pdfpro-navbar .pdfpro-tools-dropdown-toggle { width: 1.9rem; }
+
+  .pdfpro-navbar .pdfpro-section-menu + .pdfpro-section-menu .pdfpro-section-link::before {
+    display: inline-block;
+    width: 2px;
+    height: 1.05rem;
+    margin-right: .58rem;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #9a66e8, #58aee3, #e879b7);
+    content: '';
+    opacity: .62;
+    vertical-align: middle;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .pdfpro-navbar .pdfpro-primary-nav { gap: .2rem !important; padding-inline: .34rem; }
+  .pdfpro-navbar .pdfpro-primary-nav > .nav-link { padding-inline: .43rem; font-size: .75rem; }
+  .pdfpro-navbar .pdfpro-tool-section-nav { gap: .04rem; margin-inline: .16rem; padding-left: .25rem; }
+  .pdfpro-navbar .pdfpro-section-menu .pdfpro-section-link { padding-inline: .32rem; font-size: .72rem; }
+  .pdfpro-navbar .pdfpro-tools-dropdown-toggle { width: 1.68rem; }
+  .pdfpro-navbar .pdfpro-section-menu + .pdfpro-section-menu .pdfpro-section-link::before { margin-right: .38rem; }
+}
