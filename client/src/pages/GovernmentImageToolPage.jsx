@@ -218,6 +218,8 @@ async function prepareImage(file, options) {
       canvas.width = width; canvas.height = height;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('Your browser could not prepare the output image.');
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
       if (options.whiteBackground || options.photoFooter || format === 'image/jpeg') {
         context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
       }
@@ -231,7 +233,7 @@ async function prepareImage(file, options) {
       }
       if (options.photoFooter) drawPhotoFooter(context, width, height, options.photoFooter);
       const qualitySteps = options.targetBytes && format === 'image/jpeg'
-        ? [0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82]
+        ? [1, 0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82]
         : [0.92];
       for (const quality of qualitySteps) {
         let candidate = await canvasBlob(canvas, format, quality);
