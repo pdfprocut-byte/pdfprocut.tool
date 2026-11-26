@@ -41,7 +41,7 @@ export default function SignaturePlacementPreview({ pdfFile, signatureFile, page
   const displayHeightPercent = displayBox.height;
 
   useEffect(() => {
-    if (!signatureFile) { setSignatureUrl(''); return undefined; }
+    if (!signatureFile) { setSignatureUrl(''); setSignatureAspect(3); return undefined; }
     const url = URL.createObjectURL(signatureFile);
     setSignatureUrl(url);
     return () => URL.revokeObjectURL(url);
@@ -54,7 +54,7 @@ export default function SignaturePlacementPreview({ pdfFile, signatureFile, page
     const renderPage = async () => {
       setPagePreview(null);
       setError('');
-      if (!pdfFile || !signatureFile) return;
+      if (!pdfFile) return;
       try {
         const data = await pdfFile.arrayBuffer();
         if (!active) return;
@@ -161,7 +161,7 @@ export default function SignaturePlacementPreview({ pdfFile, signatureFile, page
   const onCanvasClick = (event) => {
     if (dragRef.current) return;
     if (activeLayer === 'text' && textItems.some((item) => item.id === activeTextId && item.text?.trim())) { placeTextAtPointer(event); return; }
-    placeAtPointer(event, true);
+    if (signatureFile) placeAtPointer(event, true);
   };
 
   const onSignaturePointerDown = (event) => {
@@ -249,7 +249,7 @@ export default function SignaturePlacementPreview({ pdfFile, signatureFile, page
   };
 
   return <section className="signature-placement-section">
-    <div className="signature-placement-heading"><div><h3>Choose {placementLabel} position</h3><p>Select image or text in the side tools, then click the page or drag the item. Use the red arrow to rotate the image.</p></div><span>Page {pageNumber || 1}{pagePreview ? ` of ${pagePreview.pageCount}` : ''} · {rotationAngle.toFixed(1)}°</span></div>
+    <div className="signature-placement-heading"><div><h3>Choose {placementLabel} position</h3><p>Select an image or text layer in the side tools, then click the page or drag the layer. The red handle rotates images.</p></div><span>Page {pageNumber || 1}{pagePreview ? ` of ${pagePreview.pageCount}` : ''} · {rotationAngle.toFixed(1)}°</span></div>
     <div className="signature-placement-layout">
       <div className="signature-placement-main">
         {error && <p className="signature-placement-error" role="alert">{error}</p>}
@@ -257,10 +257,10 @@ export default function SignaturePlacementPreview({ pdfFile, signatureFile, page
         {pagePreview && <div className="signature-placement-workspace">
           <div className="signature-placement-page" ref={previewRef} style={{ aspectRatio: `${pagePreview.width} / ${pagePreview.height}` }} onClick={onCanvasClick}>
             <img className="signature-placement-pdf-page" src={pagePreview.src} alt={`PDF page ${pageNumber} preview`}/>
-            <div className="signature-placement-stamp" style={{ left: `${xPercent}%`, top: `${yPercent}%`, width: `${displayWidthPercent}%`, height: `${displayHeightPercent}%` }} onClick={(event) => event.stopPropagation()} onPointerDown={onSignaturePointerDown} onPointerMove={onSignaturePointerMove} onPointerUp={onSignaturePointerUp} onPointerCancel={onSignaturePointerUp} onKeyDown={onSignatureKeyDown} role="button" tabIndex={0} aria-label={`Drag to position your ${placementLabel}; use arrow keys to adjust`}>
+            {signatureFile && <div className="signature-placement-stamp" style={{ left: `${xPercent}%`, top: `${yPercent}%`, width: `${displayWidthPercent}%`, height: `${displayHeightPercent}%` }} onClick={(event) => event.stopPropagation()} onPointerDown={onSignaturePointerDown} onPointerMove={onSignaturePointerMove} onPointerUp={onSignaturePointerUp} onPointerCancel={onSignaturePointerUp} onKeyDown={onSignatureKeyDown} role="button" tabIndex={0} aria-label={`Drag to position your ${placementLabel}; use arrow keys to adjust`}>
               <img src={signatureUrl} alt={`${placementLabel} placement preview`} style={{ width: `${signatureAspect / rotatedNaturalWidth * 100}%`, height: `${1 / rotatedNaturalHeight * 100}%`, transform: `translate(-50%, -50%) rotate(${rotationAngle}deg)`, opacity: Number(opacity) / 100, border: Number(frameWidth) > 0 ? `${Number(frameWidth) * pagePreview.scale}px solid ${frameColor}` : 'none', boxSizing: 'border-box' }} onClick={(event) => event.stopPropagation()} onLoad={(event) => setSignatureAspect(event.currentTarget.naturalWidth / event.currentTarget.naturalHeight || 3)}/>
               <button type="button" className="signature-rotate-handle" aria-label="Drag to rotate image" title="Drag to rotate" onClick={(event) => event.stopPropagation()} onPointerDown={onRotatePointerDown} onPointerMove={onRotatePointerMove} onPointerUp={onRotatePointerUp} onPointerCancel={onRotatePointerUp}><FaRedoAlt/></button>
-            </div>
+            </div>}
             {textItems.filter((item) => item.text?.trim()).map((item) => <div key={item.id} ref={(element) => { if (element) textPreviewRefs.current.set(item.id, element); else textPreviewRefs.current.delete(item.id); }} className={`signature-text-placement ${activeLayer === 'text' && activeTextId === item.id ? 'active' : ''}`} style={{ left: `${item.xPercent}%`, top: `${item.yPercent}%`, maxWidth: `${Math.max(1, 100 - Number(item.xPercent || 0))}%`, color: item.color, fontSize: `${Number(item.size || 18) * pagePreview.scale}px`, fontFamily: String(item.font || '').startsWith('TimesRoman') ? 'Georgia, serif' : String(item.font || '').startsWith('Courier') ? 'Courier New, monospace' : 'Arial, sans-serif', fontWeight: /Bold/.test(item.font || '') ? 700 : 400, fontStyle: /Italic|Oblique/.test(item.font || '') ? 'italic' : 'normal' }} onClick={(event) => event.stopPropagation()} onPointerDown={(event) => onTextPointerDown(event, item)} onPointerMove={onTextPointerMove} onPointerUp={onTextPointerUp} onPointerCancel={onTextPointerUp} role="button" tabIndex={0} aria-label={`Drag to position text ${item.id}`}>
               {item.text}
             </div>)}

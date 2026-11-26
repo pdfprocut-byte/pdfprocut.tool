@@ -143,18 +143,20 @@ export async function unlockPdf(file, password) {
 }
 
 export async function signPdf(file, signatureFile, options = {}) {
-  if (!signatureFile) throw new ApiError(400, 'Upload a PNG or JPG signature image');
+  if (!signatureFile && options.allowTextOnly !== true) throw new ApiError(400, 'Upload a PNG or JPG signature image');
   let document;
   try { document = await PDFDocument.load(file.buffer); }
   catch { throw new ApiError(422, 'Could not open this PDF for signing'); }
-  let signature;
-  try {
-    if (signatureFile.mimetype === 'image/png') signature = await document.embedPng(signatureFile.buffer);
-    else if (signatureFile.mimetype === 'image/jpeg') signature = await document.embedJpg(signatureFile.buffer);
-    else throw new ApiError(415, 'Signature images must be PNG or JPG');
-  } catch (error) {
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(415, 'Could not read the signature image');
+  let signature = null;
+  if (signatureFile) {
+    try {
+      if (signatureFile.mimetype === 'image/png') signature = await document.embedPng(signatureFile.buffer);
+      else if (signatureFile.mimetype === 'image/jpeg') signature = await document.embedJpg(signatureFile.buffer);
+      else throw new ApiError(415, 'Signature images must be PNG or JPG');
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(415, 'Could not read the signature image');
+    }
   }
   const pageNumber = Number(options.page || 1);
   if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > document.getPageCount()) throw new ApiError(400, 'Choose a valid PDF page for the signature');
@@ -168,74 +170,76 @@ export async function signPdf(file, signatureFile, options = {}) {
   if (!/^[\da-fA-F]{6}$/.test(frameHex)) throw new ApiError(400, 'Choose a valid frame color');
   const page = document.getPage(pageNumber - 1);
   const { width, height } = page.getSize();
-  let imageWidth;
-  let imageHeight;
-  let x;
-  let y;
-  let drawRotation = 0;
   const pageRotation = ((page.getRotation().angle % 360) + 360) % 360;
-  if (options.xPercent !== undefined || options.yPercent !== undefined) {
-    const xPercent = Number(options.xPercent);
-    const yPercent = Number(options.yPercent);
-    const imageRotation = Number(options.rotation ?? 0);
-    if (![xPercent, yPercent].every(Number.isFinite) || xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) {
-      throw new ApiError(400, 'Choose a valid signature position on the page');
+  if (signature) {
+    let imageWidth;
+    let imageHeight;
+    let x;
+    let y;
+    let drawRotation = 0;
+    if (options.xPercent !== undefined || options.yPercent !== undefined) {
+      const xPercent = Number(options.xPercent);
+      const yPercent = Number(options.yPercent);
+      const imageRotation = Number(options.rotation ?? 0);
+      if (![xPercent, yPercent].every(Number.isFinite) || xPercent < 0 || xPercent > 100 || yPercent < 0 || yPercent > 100) {
+        throw new ApiError(400, 'Choose a valid signature position on the page');
+      }
+      if (![0, 90, 180, 270].includes(pageRotation)) throw new ApiError(422, 'This PDF page has an unsupported rotation');
+      if (!Number.isFinite(imageRotation) || imageRotation < 0 || imageRotation >= 360) throw new ApiError(400, 'Choose an image rotation between 0 and 359.9 degrees');
+      const imageRadians = imageRotation * Math.PI / 180;
+      const absCos = Math.abs(Math.cos(imageRadians));
+      const absSin = Math.abs(Math.sin(imageRadians));
+      const isSidewaysPage = pageRotation === 90 || pageRotation === 270;
+      const displayWidth = isSidewaysPage ? height : width;
+      const displayHeight = isSidewaysPage ? width : height;
+      const marginX = Math.min(36, displayWidth / 20);
+      const marginY = Math.min(36, displayHeight / 20);
+      const maxWidth = Math.min(displayWidth * widthPercent / 100, displayWidth - 2 * marginX);
+      const maxHeight = displayHeight - 2 * marginY;
+      const naturalDisplayWidth = absCos * signature.width + absSin * signature.height;
+      const naturalDisplayHeight = absSin * signature.width + absCos * signature.height;
+      const scale = Math.min(maxWidth / naturalDisplayWidth, maxHeight / naturalDisplayHeight);
+      const displayImageWidth = naturalDisplayWidth * scale;
+      const displayImageHeight = naturalDisplayHeight * scale;
+      imageWidth = signature.width * scale;
+      imageHeight = signature.height * scale;
+      const displayX = Math.min(displayWidth - displayImageWidth, Math.max(0, displayWidth * xPercent / 100));
+      const displayY = Math.min(displayHeight - displayImageHeight, Math.max(0, displayHeight * yPercent / 100));
+      const centerX = displayX + displayImageWidth / 2;
+      const centerY = displayY + displayImageHeight / 2;
+      let pdfCenterX;
+      let pdfCenterY;
+      if (pageRotation === 0) { pdfCenterX = centerX; pdfCenterY = height - centerY; }
+      else if (pageRotation === 90) { pdfCenterX = centerY; pdfCenterY = centerX; }
+      else if (pageRotation === 180) { pdfCenterX = width - centerX; pdfCenterY = centerY; }
+      else { pdfCenterX = width - centerY; pdfCenterY = height - centerX; }
+      x = pdfCenterX - imageWidth / 2;
+      y = pdfCenterY - imageHeight / 2;
+      drawRotation = pageRotation - imageRotation;
+    } else {
+      const marginX = Math.min(36, width / 20);
+      const marginY = Math.min(36, height / 20);
+      const maxWidth = Math.min(width * widthPercent / 100, width - 2 * marginX);
+      const maxHeight = height - 2 * marginY;
+      const scale = Math.min(maxWidth / signature.width, maxHeight / signature.height);
+      imageWidth = signature.width * scale;
+      imageHeight = signature.height * scale;
+      const position = String(options.position || 'bottom-right');
+      const positions = {
+        'bottom-right': [width - imageWidth - marginX, marginY],
+        'bottom-left': [marginX, marginY],
+        'top-right': [width - imageWidth - marginX, height - imageHeight - marginY],
+        'top-left': [marginX, height - imageHeight - marginY],
+        center: [(width - imageWidth) / 2, (height - imageHeight) / 2]
+      };
+      if (!positions[position]) throw new ApiError(400, 'Choose a supported signature position');
+      [x, y] = positions[position];
     }
-    if (![0, 90, 180, 270].includes(pageRotation)) throw new ApiError(422, 'This PDF page has an unsupported rotation');
-    if (!Number.isFinite(imageRotation) || imageRotation < 0 || imageRotation >= 360) throw new ApiError(400, 'Choose an image rotation between 0 and 359.9 degrees');
-    const imageRadians = imageRotation * Math.PI / 180;
-    const absCos = Math.abs(Math.cos(imageRadians));
-    const absSin = Math.abs(Math.sin(imageRadians));
-    const isSidewaysPage = pageRotation === 90 || pageRotation === 270;
-    const displayWidth = isSidewaysPage ? height : width;
-    const displayHeight = isSidewaysPage ? width : height;
-    const marginX = Math.min(36, displayWidth / 20);
-    const marginY = Math.min(36, displayHeight / 20);
-    const maxWidth = Math.min(displayWidth * widthPercent / 100, displayWidth - 2 * marginX);
-    const maxHeight = displayHeight - 2 * marginY;
-    const naturalDisplayWidth = absCos * signature.width + absSin * signature.height;
-    const naturalDisplayHeight = absSin * signature.width + absCos * signature.height;
-    const scale = Math.min(maxWidth / naturalDisplayWidth, maxHeight / naturalDisplayHeight);
-    const displayImageWidth = naturalDisplayWidth * scale;
-    const displayImageHeight = naturalDisplayHeight * scale;
-    imageWidth = signature.width * scale;
-    imageHeight = signature.height * scale;
-    const displayX = Math.min(displayWidth - displayImageWidth, Math.max(0, displayWidth * xPercent / 100));
-    const displayY = Math.min(displayHeight - displayImageHeight, Math.max(0, displayHeight * yPercent / 100));
-    const centerX = displayX + displayImageWidth / 2;
-    const centerY = displayY + displayImageHeight / 2;
-    let pdfCenterX;
-    let pdfCenterY;
-    if (pageRotation === 0) { pdfCenterX = centerX; pdfCenterY = height - centerY; }
-    else if (pageRotation === 90) { pdfCenterX = centerY; pdfCenterY = centerX; }
-    else if (pageRotation === 180) { pdfCenterX = width - centerX; pdfCenterY = centerY; }
-    else { pdfCenterX = width - centerY; pdfCenterY = height - centerX; }
-    x = pdfCenterX - imageWidth / 2;
-    y = pdfCenterY - imageHeight / 2;
-    drawRotation = pageRotation - imageRotation;
-  } else {
-    const marginX = Math.min(36, width / 20);
-    const marginY = Math.min(36, height / 20);
-    const maxWidth = Math.min(width * widthPercent / 100, width - 2 * marginX);
-    const maxHeight = height - 2 * marginY;
-    const scale = Math.min(maxWidth / signature.width, maxHeight / signature.height);
-    imageWidth = signature.width * scale;
-    imageHeight = signature.height * scale;
-    const position = String(options.position || 'bottom-right');
-    const positions = {
-      'bottom-right': [width - imageWidth - marginX, marginY],
-      'bottom-left': [marginX, marginY],
-      'top-right': [width - imageWidth - marginX, height - imageHeight - marginY],
-      'top-left': [marginX, height - imageHeight - marginY],
-      center: [(width - imageWidth) / 2, (height - imageHeight) / 2]
-    };
-    if (!positions[position]) throw new ApiError(400, 'Choose a supported signature position');
-    [x, y] = positions[position];
-  }
-  page.drawImage(signature, { x, y, width: imageWidth, height: imageHeight, opacity, rotate: degrees(drawRotation) });
-  if (frameWidth > 0) {
-    const frameColor = rgb(parseInt(frameHex.slice(0, 2), 16) / 255, parseInt(frameHex.slice(2, 4), 16) / 255, parseInt(frameHex.slice(4, 6), 16) / 255);
-    page.drawRectangle({ x, y, width: imageWidth, height: imageHeight, rotate: degrees(drawRotation), color: rgb(1, 1, 1), opacity: 0, borderColor: frameColor, borderWidth: frameWidth, borderOpacity: 1 });
+    page.drawImage(signature, { x, y, width: imageWidth, height: imageHeight, opacity, rotate: degrees(drawRotation) });
+    if (frameWidth > 0) {
+      const frameColor = rgb(parseInt(frameHex.slice(0, 2), 16) / 255, parseInt(frameHex.slice(2, 4), 16) / 255, parseInt(frameHex.slice(4, 6), 16) / 255);
+      page.drawRectangle({ x, y, width: imageWidth, height: imageHeight, rotate: degrees(drawRotation), color: rgb(1, 1, 1), opacity: 0, borderColor: frameColor, borderWidth: frameWidth, borderOpacity: 1 });
+    }
   }
 
   let textItems;
@@ -246,7 +250,9 @@ export async function signPdf(file, signatureFile, options = {}) {
   }
   if (!Array.isArray(textItems) || textItems.length > 20) throw new ApiError(400, 'Add between 0 and 20 text layers');
   if (!textItems.length && options.overlayText) textItems = [{ text: options.overlayText, xPercent: options.textXPercent, yPercent: options.textYPercent, size: options.textSize, color: options.textColor, font: options.textFont }];
+  if (!signature && !textItems.some((item) => typeof item?.text === 'string' && item.text.trim())) throw new ApiError(400, 'Add text or upload an image to edit the PDF');
   const textFontNames = [StandardFonts.Helvetica, StandardFonts.HelveticaBold, StandardFonts.HelveticaOblique, StandardFonts.HelveticaBoldOblique, StandardFonts.TimesRoman, StandardFonts.TimesRomanBold, StandardFonts.TimesRomanItalic, StandardFonts.TimesRomanBoldItalic, StandardFonts.Courier, StandardFonts.CourierBold, StandardFonts.CourierOblique, StandardFonts.CourierBoldOblique];
+  const textFontAliases = { Helvetica: StandardFonts.Helvetica, HelveticaBold: StandardFonts.HelveticaBold, HelveticaOblique: StandardFonts.HelveticaOblique, HelveticaBoldOblique: StandardFonts.HelveticaBoldOblique, TimesRoman: StandardFonts.TimesRoman, TimesRomanBold: StandardFonts.TimesRomanBold, TimesRomanItalic: StandardFonts.TimesRomanItalic, TimesRomanBoldItalic: StandardFonts.TimesRomanBoldItalic, Courier: StandardFonts.Courier, CourierBold: StandardFonts.CourierBold, CourierOblique: StandardFonts.CourierOblique, CourierBoldOblique: StandardFonts.CourierBoldOblique };
   const embeddedTextFonts = new Map();
   const isSidewaysTextPage = pageRotation === 90 || pageRotation === 270;
   const textDisplayWidth = isSidewaysTextPage ? height : width;
@@ -257,7 +263,8 @@ export async function signPdf(file, signatureFile, options = {}) {
     const overlayText = String(item.text || '').trim().slice(0, 250);
     if (!overlayText) continue;
     const textSize = Number(item.size ?? 20);
-    const textFontName = String(item.font || StandardFonts.HelveticaBold);
+    const requestedFontName = String(item.font || StandardFonts.HelveticaBold);
+    const textFontName = textFontAliases[requestedFontName] || requestedFontName;
     if (!Number.isFinite(textSize) || textSize < 6 || textSize > 72) throw new ApiError(400, 'Text size must be between 6 and 72 points');
     if (!textFontNames.includes(textFontName)) throw new ApiError(400, 'Choose a supported text font');
     const textHex = String(item.color || '#d9273d').replace(/^#/, '');

@@ -137,4 +137,13 @@ export const htmlToPdf = asyncHandler(async(req,res)=>{
   if (req.body.html.length > 500_000) throw new ApiError(413,'HTML input must be under 500 KB');
   return sendPdf(res,await pdf.richTextToPdf(req.body.html,req.body.options || {}));
 });
-export const editPdf = asyncHandler(async(req,res)=>sendPdf(res,await extraPdf.addPdfText(pdfFile(req),req.body)));
+export const editPdf = asyncHandler(async(req,res)=>{
+  const source = req.files?.files?.[0];
+  if (!source) throw new ApiError(400, 'Upload a PDF to edit');
+  if (source.mimetype !== 'application/pdf') throw new ApiError(415, 'Upload a PDF file');
+  const image = req.files?.signature?.[0] || null;
+  if (!image && req.body.text?.trim() && req.body.textItems === undefined) {
+    return sendPdf(res, await extraPdf.addPdfText(source, req.body));
+  }
+  return sendPdf(res, await extraPdf.signPdf(source, image, { ...req.body, allowTextOnly: true }));
+});

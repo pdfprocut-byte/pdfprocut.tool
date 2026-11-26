@@ -8,6 +8,7 @@ const r = Router();
 const protectedUpload = (handler) => [optionalAuth, recordPdfOperation, uploadLimiter, uploadConcurrencyLimiter, resetUploadByteCount, handler];
 const many = protectedUpload(upload.array('files', 20));
 const single = protectedUpload(upload.array('files', 1));
+const editFiles = protectedUpload(upload.fields([{ name: 'files', maxCount: 1 }, { name: 'signature', maxCount: 1 }]));
 const watermarkFiles = protectedUpload(upload.fields([{ name: 'files', maxCount: 1 }, { name: 'watermarkImage', maxCount: 1 }]));
 const signFiles = protectedUpload(upload.fields([{ name: 'files', maxCount: 1 }, { name: 'signature', maxCount: 1 }]));
 
@@ -29,7 +30,7 @@ r.post('/office-to-pdf', ...single, c.officeToPdf);
 r.post('/pdf-to-powerpoint', ...single, c.pdfToPowerPoint);
 r.post('/pdf-to-pdfa', ...single, c.pdfToPdfA);
 r.post('/html-to-pdf', ...many, c.htmlToPdf);
-r.post('/edit-pdf', ...single, c.editPdf);
+r.post('/edit-pdf', ...editFiles, c.editPdf);
 r.post('/protect-pdf', ...single, c.protect);
 r.post('/unlock-pdf', ...single, c.unlock);
 r.post('/repair-pdf', ...single, c.repair);

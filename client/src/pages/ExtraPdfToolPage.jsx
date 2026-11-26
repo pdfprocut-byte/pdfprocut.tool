@@ -85,6 +85,7 @@ export default function ExtraPdfToolPage({ tool }) {
   const isPdfA = tool.endpoint === 'pdf-to-pdfa';
   const isOfficeConversion = tool.endpoint === 'office-to-pdf';
   const validFiles = isHtml ? Boolean(html.trim()) : isCompare ? files.length === 2 : files.length === 1;
+  const editHasContent = Boolean(signature || textItems.some((item) => item.text?.trim()));
 
   useEffect(() => {
     if (!isExtractImages || !files[0]) {
@@ -170,6 +171,7 @@ export default function ExtraPdfToolPage({ tool }) {
 
   const submit = async () => {
     if (!validFiles) return toast.error(isHtml ? 'Enter HTML content first' : isCompare ? 'Choose exactly two PDFs to compare' : 'Select one PDF first');
+    if (isEdit && !editHasContent) return toast.error('Add text or choose an image to place on the PDF');
     if (isExtractImages && (!embeddedImages.length || !selectedImageIds.size)) return toast.error('Select at least one image to extract');
     if (isForms && !formFields.length) return toast.error('This PDF has no fillable form fields');
     if (isSign && !signature) return toast.error(isImagePlacement ? 'Select a PNG or JPG image to add' : 'Select a PNG or JPG signature image');
@@ -182,7 +184,11 @@ export default function ExtraPdfToolPage({ tool }) {
       files.forEach((file) => body.append('files', file));
       if (isExtractImages) body.append('selectedImages', JSON.stringify([...selectedImageIds]));
       if (isHtml) body.append('html', html);
-      if (isEdit) Object.entries(editOptions).forEach(([key, value]) => body.append(key, value));
+      if (isEdit) {
+        if (signature) body.append('signature', signature);
+        Object.entries(signOptions).forEach(([key, value]) => body.append(key, value));
+        body.append('textItems', JSON.stringify(textItems.map(({ id, ...item }) => item)));
+      }
       if (isSign) {
         body.append('signature', signature);
         Object.entries(signOptions).forEach(([key, value]) => body.append(key, value));
@@ -219,7 +225,7 @@ export default function ExtraPdfToolPage({ tool }) {
 
   if (!draftReady) return <main className="container py-5 tool-page"><p className="small text-secondary">Restoring your saved work…</p></main>;
 
-  return <main className={`container py-5 tool-page${isImagePlacement ? ' tool-page-image-placement' : ''}`}>
+  return <main className={`container py-5 tool-page${isImagePlacement ? ' tool-page-image-placement' : ''}${isEdit ? ' tool-page-pdf-edit' : ''}`}>
     <Link to="/tools" className="back">← All tools</Link>
     <h2>{tool.name}</h2>
     <p className="lead">{tool.description}</p>
@@ -231,7 +237,7 @@ export default function ExtraPdfToolPage({ tool }) {
     {isFlatten && <p className="small text-secondary">Forms and annotations are rendered into fixed page images. The result will not have interactive fields or selectable page text.</p>}
     {isExtractImages && <p className="small text-secondary">Review the embedded image previews, select the pictures to keep, and download them as PNG files. Text and vector drawings are not extracted.</p>}
     {isImageConversion && <label className="mt-3">Image format<select className="form-select" value={imageFormat} onChange={(event) => setImageFormat(event.target.value)}><option value="jpg">JPG</option><option value="png">PNG</option></select></label>}
-    {isHtml ? <label className="mt-3">HTML content<textarea className="form-control" rows="10" maxLength="500000" value={html} onChange={(event) => setHtml(event.target.value)}/></label> : <FileUploader tool={tool} onFiles={(selected) => { setFiles(isCompare ? selected.slice(0, 2) : selected.slice(0, 1)); setFormValues({}); if (isSign) { setSignPageCount(0); setSignOptions((current) => ({ ...current, page: '1' })); } setResult(null); }}/>} 
+    {isHtml ? <label className="mt-3">HTML content<textarea className="form-control" rows="10" maxLength="500000" value={html} onChange={(event) => setHtml(event.target.value)}/></label> : <FileUploader tool={tool} onFiles={(selected) => { setFiles(isCompare ? selected.slice(0, 2) : selected.slice(0, 1)); setFormValues({}); if (isSign || isEdit) { setSignPageCount(0); setSignOptions((current) => ({ ...current, page: '1' })); } if (isEdit) { setSignature(null); setTextItems([]); setActiveTextId(''); setActiveSignLayer('image'); } setResult(null); }}/>}
     {files.length > 0 && <UploadedFileList files={files}/>}
 
     {isExtractImages && files.length > 0 && <section className="extract-image-review mt-4" aria-labelledby="extract-image-review-title">
@@ -261,15 +267,50 @@ export default function ExtraPdfToolPage({ tool }) {
       <label className="col-12">Pages to crop (optional)<input className="form-control" placeholder="All pages or 1-3,5" value={crop.pages} onChange={(event) => setCrop((current) => ({ ...current, pages: event.target.value }))}/></label>
     </section>}
 
-    {isEdit && <section className="row g-3 mt-2">
-      <label className="col-12">Text to add<textarea className="form-control" rows="3" maxLength="500" value={editOptions.text} onChange={(event) => setEditOptions((current) => ({ ...current, text: event.target.value }))}/></label>
-      <label className="col-md-4">Page<input className="form-control" type="number" min="1" value={editOptions.page} onChange={(event) => setEditOptions((current) => ({ ...current, page: event.target.value }))}/></label>
-      <label className="col-md-4">X position (pt)<input className="form-control" type="number" min="0" value={editOptions.x} onChange={(event) => setEditOptions((current) => ({ ...current, x: event.target.value }))}/></label>
-      <label className="col-md-4">Y position (pt)<input className="form-control" type="number" min="0" value={editOptions.y} onChange={(event) => setEditOptions((current) => ({ ...current, y: event.target.value }))}/></label>
-      <label className="col-md-4">Font size (pt)<input className="form-control" type="number" min="6" max="72" value={editOptions.size} onChange={(event) => setEditOptions((current) => ({ ...current, size: event.target.value }))}/></label>
-      <label className="col-md-4">Font<select className="form-select" value={editOptions.font} onChange={(event) => setEditOptions((current) => ({ ...current, font: event.target.value }))}><option>Helvetica</option><option>Helvetica-Bold</option><option>Times-Roman</option><option>Courier</option></select></label>
-      <label className="col-md-4">Text color<input className="form-control form-control-color" type="color" value={editOptions.color} onChange={(event) => setEditOptions((current) => ({ ...current, color: event.target.value }))}/></label>
-    </section>}
+    {isEdit && files[0] && <SignaturePlacementPreview
+      pdfFile={files[0]}
+      signatureFile={signature}
+      pageNumber={signOptions.page}
+      widthPercent={signOptions.widthPercent}
+      rotation={signOptions.rotation}
+      opacity={signOptions.opacity}
+      frameWidth={signOptions.frameWidth}
+      frameColor={signOptions.frameColor}
+      textItems={textItems}
+      activeLayer={activeSignLayer}
+      activeTextId={activeTextId}
+      xPercent={signOptions.xPercent}
+      yPercent={signOptions.yPercent}
+      placementLabel="image or text"
+      onPositionChange={(position) => setSignOptions((current) => ({ ...current, ...position }))}
+      onRotationChange={(rotation) => setSignOptions((current) => ({ ...current, rotation }))}
+      onTextPositionChange={(id, position) => updateTextItem(id, position)}
+      onTextSelect={(id) => { setActiveTextId(id); setActiveSignLayer('text'); }}
+      onActiveLayerChange={setActiveSignLayer}
+      onPageCount={(count) => { setSignPageCount(count); setSignOptions((current) => Number(current.page) > count ? { ...current, page: String(count) } : current); }}
+      controls={({ changeRotation, setActiveLayer }) => <>
+        <h4>PDF editing tools</h4>
+        <label>PDF page<input className="form-control" type="number" min="1" max={signPageCount || undefined} value={signOptions.page} onChange={(event) => setSignOptions((current) => ({ ...current, page: event.target.value }))}/></label>
+        <label>Add image to page (PNG or JPG)<input type="file" accept="image/png,image/jpeg" onChange={(event) => { const image = event.target.files?.[0] || null; if (image) { setSignature(image); setActiveSignLayer('image'); } event.target.value = ''; }}/></label>
+        {signature && <div className="pdf-edit-selected-image"><span title={signature.name}>{signature.name}</span><button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => { setSignature(null); if (textItems.length) { setActiveTextId(textItems[0].id); setActiveLayer('text'); } }}>Remove image</button></div>}
+        <div className="signature-layer-buttons"><button type="button" className={activeSignLayer === 'image' ? 'active' : ''} disabled={!signature} onClick={() => setActiveLayer('image')}>Place image</button><button type="button" className={activeSignLayer === 'text' ? 'active' : ''} disabled={!textItems.length} onClick={() => { if (activeTextId) setActiveLayer('text'); else { setActiveTextId(textItems[0].id); setActiveLayer('text'); } }}>Place text</button></div>
+        {signature && <>
+          <label>Image width <output>{signOptions.widthPercent}%</output><input className="form-range" type="range" min="5" max="60" step="1" value={signOptions.widthPercent} onChange={(event) => setSignOptions((current) => ({ ...current, widthPercent: event.target.value }))}/></label>
+          <label>Rotation <output>{Number(signOptions.rotation).toFixed(1)}°</output><input className="form-range" type="range" min="0" max="359.9" step="0.1" value={signOptions.rotation} onChange={(event) => changeRotation(event.target.value)}/></label>
+          <label>Opacity <output>{signOptions.opacity}%</output><input className="form-range" type="range" min="0" max="100" step="1" value={signOptions.opacity} onChange={(event) => setSignOptions((current) => ({ ...current, opacity: event.target.value }))}/></label>
+        </>}
+        <div className="signature-text-list-heading"><h5>Text layers <small>{textItems.length}/20</small></h5><button type="button" className="signature-add-text" onClick={() => { addTextItem(); setActiveLayer('text'); }} disabled={textItems.length >= 20}>+ Add text</button></div>
+        {!textItems.length && <small>Add text, then click or drag it on the PDF page to position it.</small>}
+        <div className="signature-text-layers">{textItems.map((item, index) => <section className={`signature-text-layer ${activeTextId === item.id ? 'selected' : ''}`} key={item.id}>
+          <div className="signature-text-layer-heading"><button type="button" className="signature-text-select" onClick={() => { setActiveTextId(item.id); setActiveLayer('text'); }}>{`Text ${index + 1}`}{activeTextId === item.id ? ' · selected' : ''}</button><button type="button" className="signature-text-remove" aria-label={`Remove text ${index + 1}`} onClick={() => removeTextItem(item.id)}>×</button></div>
+          <label>Text<textarea className="form-control" rows="2" maxLength="250" value={item.text} onChange={(event) => updateTextItem(item.id, { text: event.target.value })}/></label>
+          <label>Font style<select className="form-select" value={item.font} onChange={(event) => updateTextItem(item.id, { font: event.target.value })}><option value="Helvetica">Helvetica</option><option value="HelveticaBold">Helvetica Bold</option><option value="HelveticaOblique">Helvetica Italic</option><option value="HelveticaBoldOblique">Helvetica Bold Italic</option><option value="TimesRoman">Times New Roman</option><option value="TimesRomanBold">Times New Roman Bold</option><option value="TimesRomanItalic">Times New Roman Italic</option><option value="TimesRomanBoldItalic">Times New Roman Bold Italic</option><option value="Courier">Courier</option><option value="CourierBold">Courier Bold</option><option value="CourierOblique">Courier Italic</option><option value="CourierBoldOblique">Courier Bold Italic</option></select></label>
+          <label>Text size <output>{item.size} pt</output><input className="form-range" type="range" min="6" max="72" step="1" value={item.size} onChange={(event) => updateTextItem(item.id, { size: event.target.value })}/></label>
+          <label>Text color<span className="signature-color-field"><small>{item.color}</small><input type="color" value={item.color} onChange={(event) => updateTextItem(item.id, { color: event.target.value })}/></span></label>
+        </section>)}</div>
+        <small>Drag the selected image or text on the page to place it. Add both to include both in the output.</small>
+      </>}
+    />}
 
     {isUnlock && <section className="unlock-password-section mt-3"><label>PDF password<input className="form-control" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter the password to unlock"/></label><details className="unlock-help"><summary>I don’t know the password</summary><p>For security, an encrypted PDF can only be unlocked with its correct password. Ask the document owner to share the password or send you an unlocked copy. If you created the PDF, check your password manager or the app where you originally protected it.</p></details></section>}
 
@@ -342,8 +383,8 @@ export default function ExtraPdfToolPage({ tool }) {
 
     {isImageConversion && imageFormat === 'jpg' && <label className="mt-3">JPG quality ({jpegQuality}%)<input className="form-range" type="range" min="50" max="100" value={jpegQuality} onChange={(event) => setJpegQuality(event.target.value)}/></label>}
 
-    <button className="btn btn-primary mt-4" type="button" onClick={submit} disabled={busy || !validFiles || fieldsLoading || (isExtractImages && (imagesLoading || !embeddedImages.length || !selectedImageIds.size)) || (isForms && !formFields.length) || (isSign && !signature) || (isUnlock && !password)}>
-      {busy ? 'Processing…' : isForms ? 'Fill and save PDF form' : isMetadataCleaner ? 'Clean PDF metadata' : isFlatten ? 'Flatten PDF' : isExtractImages ? 'Extract images' : tool.name}
+    <button className="btn btn-primary mt-4" type="button" onClick={submit} disabled={busy || !validFiles || fieldsLoading || (isExtractImages && (imagesLoading || !embeddedImages.length || !selectedImageIds.size)) || (isForms && !formFields.length) || (isSign && !signature) || (isEdit && !editHasContent) || (isUnlock && !password)}>
+      {busy ? 'Processing…' : isForms ? 'Fill and save PDF form' : isEdit ? 'Apply edits and save PDF' : isMetadataCleaner ? 'Clean PDF metadata' : isFlatten ? 'Flatten PDF' : isExtractImages ? 'Extract images' : tool.name}
     </button>
 
     <OperationProgressModal show={busy} title={`PDF Pro Cut is processing ${tool.name.toLowerCase()}`} description="Please wait while your file is prepared."/>

@@ -55,16 +55,22 @@
 .signature-text-remove:hover{background:#df2338;color:#fff}
 .signature-color-field{display:grid;grid-template-columns:1fr 45px;align-items:center;gap:.5rem}
 .signature-placement-tools input[type=color]{width:45px;height:37px;margin:0;padding:.2rem;border:1px solid #d0d5dd;border-radius:7px;background:#fff;cursor:pointer}
+.pdf-edit-selected-image{display:flex;align-items:center;justify-content:space-between;gap:.55rem;padding:.55rem;border:1px solid #e1e5ed;border-radius:8px;background:#f8faff}.pdf-edit-selected-image span{min-width:0;overflow:hidden;color:#596579;font-size:.72rem;text-overflow:ellipsis;white-space:nowrap}
 .signature-placement-loading{min-height:160px;display:flex;align-items:center;justify-content:center;gap:.55rem;border:1px dashed #d5dae4;border-radius:10px;background:#fff;color:#667085;font-size:.85rem}
 .signature-placement-loading span{width:20px;height:20px;border:3px solid #e1e5ed;border-top-color:#d9273d;border-radius:50%;animation:signature-place-spin .7s linear infinite}
 .signature-placement-error{margin:.8rem 0;padding:.7rem .8rem;border:1px solid #f0c3c8;border-radius:8px;background:#fff7f7;color:#a21f31;font-size:.82rem}
 .tool-page.tool-page-image-placement{width:min(100% - 2rem,1160px);max-width:1160px}
+.tool-page.tool-page-pdf-edit{width:min(100% - 2rem,1160px);max-width:1160px}
+.tool-page-pdf-edit .signature-placement-layout{grid-template-columns:minmax(0,1fr) minmax(300px,320px);gap:1rem}
+.tool-page-pdf-edit .signature-placement-tools{max-height:min(78vh,880px);padding:1rem}
+.tool-page-pdf-edit .signature-placement-workspace{max-height:min(80vh,960px);padding:.8rem}
+.tool-page-pdf-edit .signature-placement-page{width:min(100%,640px)}
 .tool-page-image-placement .signature-placement-section{margin-top:1.5rem;padding:1.15rem}
 .tool-page-image-placement .signature-placement-layout{grid-template-columns:minmax(0,1fr) minmax(300px,320px);gap:1rem}
 .tool-page-image-placement .signature-placement-tools{max-height:min(78vh,880px);padding:1rem}
 .tool-page-image-placement .signature-placement-workspace{max-height:min(80vh,960px);padding:.8rem}
 .tool-page-image-placement .signature-placement-page{width:min(100%,640px)}
 @keyframes signature-place-spin{to{transform:rotate(360deg)}}
-@media(max-width:900px){.signature-placement-layout,.tool-page-image-placement .signature-placement-layout{grid-template-columns:minmax(0,1fr)}.signature-placement-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.signature-placement-tools h4,.signature-placement-tools small{grid-column:1/-1}}
+@media(max-width:900px){.signature-placement-layout,.tool-page-image-placement .signature-placement-layout,.tool-page-pdf-edit .signature-placement-layout{grid-template-columns:minmax(0,1fr)}.signature-placement-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.signature-placement-tools h4,.signature-placement-tools small{grid-column:1/-1}}
 @media(max-width:575px){.signature-placement-section{padding:.7rem}.signature-placement-heading{flex-direction:column;gap:.45rem}.signature-placement-workspace{max-height:62vh;padding:.35rem}.signature-placement-tools{grid-template-columns:minmax(0,1fr)}}
 @media(prefers-reduced-motion:reduce){.signature-placement-loading span{animation-duration:1.4s}}
