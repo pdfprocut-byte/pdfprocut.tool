@@ -1034,9 +1034,9 @@ html, body, #root { min-height: 100%; }
   width: 100%;
   height: 2px;
   border-radius: inherit;
-  background-image: inherit;
-  background-size: inherit;
-  background-position: inherit;
+  background-image: linear-gradient(90deg, #6537ce, #3286e5, #df43a6, #6537ce);
+  background-size: 220% 100%;
+  background-position: 0% 50%;
   animation: pdfpro-toggler-lines-flow 2.8s linear infinite;
   content: '';
   transition: top .22s ease, transform .22s ease, opacity .16s ease;
@@ -1078,4 +1078,10 @@ html, body, #root { min-height: 100%; }
   .pdfpro-navbar .pdfpro-navbar-toggler,
   .pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::before,
   .pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::after { transition: none !important; }
+}
+
+@media (max-width: 991.98px) {
+  .pdfpro-tool-section-nav { row-gap: .45rem; }
+  .pdfpro-section-menu { margin-block: .1rem; }
+  .pdfpro-navbar .pdfpro-tools-dropdown-toggle { width: 2.4rem; height: 2.4rem; }
 }
