@@ -19,55 +19,19 @@ function formatPhotoDate(dateValue) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
 }
 
-async function addPhotoNameDateFooter(blob, name, dateValue, targetBytes = null) {
-  const bitmap = await createImageBitmap(blob);
-  const footerHeight = Math.max(20, Math.round(bitmap.height * 0.12));
-  const outputHeight = bitmap.height;
-  if (bitmap.width * outputHeight > maxPixels) {
-    bitmap.close();
-    throw new Error('Adding the name and date would exceed the 30-megapixel output limit. Reduce the photo dimensions first.');
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = bitmap.width;
-  canvas.height = outputHeight;
-  try {
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Your browser could not prepare the name and date footer.');
-    context.fillStyle = '#fff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    const imageAreaHeight = Math.max(1, outputHeight - footerHeight);
-    const imageScale = Math.min(canvas.width / bitmap.width, imageAreaHeight / bitmap.height);
-    const imageWidth = bitmap.width * imageScale;
-    const imageHeight = bitmap.height * imageScale;
-    context.drawImage(bitmap, (canvas.width - imageWidth) / 2, (imageAreaHeight - imageHeight) / 2, imageWidth, imageHeight);
-    context.fillStyle = '#111';
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    const fontSize = Math.max(6, Math.min(footerHeight * 0.34, bitmap.width * 0.07));
-    context.font = `700 ${fontSize}px Arial, sans-serif`;
-    context.fillText(name.trim().toLocaleUpperCase(), bitmap.width / 2, imageAreaHeight + footerHeight * 0.31, Math.max(1, bitmap.width - 6));
-    context.font = `700 ${Math.max(7, fontSize * 0.9)}px Arial, sans-serif`;
-    context.fillText(formatPhotoDate(dateValue), bitmap.width / 2, imageAreaHeight + footerHeight * 0.75, Math.max(1, bitmap.width - 6));
-    const type = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    const qualities = targetBytes && type === 'image/jpeg' ? [0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82] : [0.92];
-    let outputBlob = null;
-    let targetMet = !targetBytes;
-    for (const quality of qualities) {
-      const candidate = await canvasBlob(canvas, type, quality);
-      if (!targetBytes || candidate.size <= targetBytes) {
-        outputBlob = candidate;
-        targetMet = true;
-        break;
-      }
-    }
-    if (!targetMet) throw new Error('Could not fit the photo and name/date footer under the selected maximum without more clarity loss. Choose a larger maximum or smaller official dimensions.');
-    return { blob: outputBlob, width: bitmap.width, height: outputHeight, targetMet };
-  } finally {
-    bitmap.close();
-    canvas.width = 0;
-    canvas.height = 0;
-  }
+function drawPhotoFooter(context, width, height, { name, date }) {
+  const footerHeight = Math.max(20, Math.round(height * 0.12));
+  const imageAreaHeight = Math.max(1, height - footerHeight);
+  context.fillStyle = '#fff';
+  context.fillRect(0, imageAreaHeight, width, footerHeight);
+  context.fillStyle = '#111';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  const fontSize = Math.max(6, Math.min(footerHeight * 0.34, width * 0.07));
+  context.font = `700 ${fontSize}px Arial, sans-serif`;
+  context.fillText(name.trim().toLocaleUpperCase(), width / 2, imageAreaHeight + footerHeight * 0.31, Math.max(1, width - 6));
+  context.font = `700 ${Math.max(7, fontSize * 0.9)}px Arial, sans-serif`;
+  context.fillText(formatPhotoDate(date), width / 2, imageAreaHeight + footerHeight * 0.75, Math.max(1, width - 6));
 }
 
 function canvasBlob(canvas, type, quality) {
@@ -221,6 +185,8 @@ async function prepareImage(file, options) {
     if (!Number.isInteger(requestedWidth) || !Number.isInteger(requestedHeight) || requestedWidth < 1 || requestedHeight < 1 || requestedWidth * requestedHeight > maxPixels) {
       throw new Error('Enter positive image dimensions with no more than 30 megapixels total.');
     }
+    const footerHeight = options.photoFooter ? Math.max(20, Math.round(requestedHeight * 0.12)) : 0;
+    const imageAreaHeight = Math.max(1, requestedHeight - footerHeight);
     if (options.fitMode === 'cover') {
       const targetRatio = requestedWidth / requestedHeight;
       const sourceRatio = crop.width / crop.height;
@@ -234,7 +200,7 @@ async function prepareImage(file, options) {
     }
 
     const format = options.format === 'png' ? 'image/png' : 'image/jpeg';
-    if (!needsPixelProcessing && !options.whiteBackground && file.type === format && bitmap.width === requestedWidth && bitmap.height === requestedHeight) {
+    if (!needsPixelProcessing && !options.whiteBackground && !options.photoFooter && file.type === format && bitmap.width === requestedWidth && bitmap.height === requestedHeight) {
       let passthrough = file;
       if (options.dpi) passthrough = format === 'image/png' ? await addPngDpi(passthrough, options.dpi) : await addJpegDpi(passthrough, options.dpi);
       if (!options.targetBytes || passthrough.size <= options.targetBytes) {
@@ -252,17 +218,18 @@ async function prepareImage(file, options) {
       canvas.width = width; canvas.height = height;
       const context = canvas.getContext('2d');
       if (!context) throw new Error('Your browser could not prepare the output image.');
-      if (options.whiteBackground || format === 'image/jpeg') {
+      if (options.whiteBackground || options.photoFooter || format === 'image/jpeg') {
         context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
       }
-      if (options.fitMode === 'contain') {
-        const scale = Math.min(width / crop.width, height / crop.height);
+      if (options.fitMode === 'contain' || options.photoFooter) {
+        const scale = Math.min(width / crop.width, imageAreaHeight / crop.height);
         const drawWidth = crop.width * scale;
         const drawHeight = crop.height * scale;
-        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (imageAreaHeight - drawHeight) / 2, drawWidth, drawHeight);
       } else {
-        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, imageAreaHeight);
       }
+      if (options.photoFooter) drawPhotoFooter(context, width, height, options.photoFooter);
       const qualitySteps = options.targetBytes && format === 'image/jpeg'
         ? [0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82]
         : [0.92];
@@ -511,12 +478,9 @@ export default function GovernmentImageToolPage({ tool }) {
           backgroundTolerance,
           format: removeBackground ? 'png' : format,
           dpi: slotPreset?.dpi || (dpiMode ? Number(dpi) : null),
+          photoFooter: hasNameDateOption && addNameDate && (!pair || slot.key === 'photo') ? { name: photoName, date: photoDate } : null,
           targetBytes: hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null
         });
-        if (hasNameDateOption && addNameDate && (!pair || slot.key === 'photo')) {
-          const labeledOutput = await addPhotoNameDateFooter(output.blob, photoName, photoDate, showSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null);
-          output = { ...output, ...labeledOutput };
-        }
         const targetBytes = hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null;
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
         const baseName = files[slot.key].name.replace(/\.[^.]+$/, '') || 'image';
@@ -631,7 +595,7 @@ export default function GovernmentImageToolPage({ tool }) {
       <div className="government-results-grid">{results.map((result) => <article className="government-result-card" key={result.name}>
         <img className={socialProfileTool ? 'social-profile-result-image' : undefined} src={result.url} alt={`Processed ${result.name} preview`}/>
         <p>{result.width} × {result.height} px · {result.blob.size.toLocaleString()} bytes ({(result.blob.size / 1024).toFixed(1)} KB)</p>
-        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Maximum size not reached; actual size is ${result.blob.size.toLocaleString()} bytes. Increase the allowed maximum or use dimensions accepted by the current notice.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : `Maximum size met: ${result.blob.size.toLocaleString()} bytes.`}</p>}
+        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Maximum size not reached; actual size is ${result.blob.size.toLocaleString()} bytes. Increase the allowed maximum or use dimensions accepted by the current notice.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : `Within the ${Math.round(result.targetBytes / 1024)} KB limit: ${result.blob.size.toLocaleString()} bytes.`}</p>}
         <ProtectedDownload className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</ProtectedDownload>
       </article>)}</div>
     </section>}
