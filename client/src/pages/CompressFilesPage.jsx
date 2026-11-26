@@ -22,17 +22,18 @@ export default function CompressFilesPage({ tool }) {
   const [customTarget, setCustomTarget] = useState('1.5');
   const [customTargetUnit, setCustomTargetUnit] = useState('MB');
   const [quality, setQuality] = useState('clear');
-  const [allowImageOnlyOptimization, setAllowImageOnlyOptimization] = useState(false);
+  const [allowRasterization, setAllowRasterization] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
-  const draft = { state: { targetChoice, customTarget, customTargetUnit, quality, allowImageOnlyOptimization }, files: file ? [file] : [], signature: null };
+  const draft = { state: { targetChoice, customTarget, customTargetUnit, quality, allowRasterization }, files: file ? [file] : [], signature: null };
   const { ready: draftReady, status: draftStatus } = useBrowserDraft(`tool:${tool.slug}`, draft, (saved) => {
     setFile(saved.files[0] || null);
     if (saved.state?.targetChoice) setTargetChoice(saved.state.targetChoice);
     if (saved.state?.customTarget) setCustomTarget(saved.state.customTarget);
     if (saved.state?.customTargetUnit === 'KB' || saved.state?.customTargetUnit === 'MB') setCustomTargetUnit(saved.state.customTargetUnit);
     if (saved.state?.quality) setQuality(saved.state.quality);
-    if (saved.state?.allowImageOnlyOptimization !== undefined) setAllowImageOnlyOptimization(saved.state.allowImageOnlyOptimization);
+    const savedRasterization = saved.state?.allowRasterization ?? saved.state?.allowImageOnlyOptimization;
+    if (savedRasterization !== undefined) setAllowRasterization(savedRasterization);
   });
 
   useEffect(() => () => {
@@ -60,7 +61,7 @@ export default function CompressFilesPage({ tool }) {
       body.append('files', file);
       body.append('targetSizeMb', String(targetSizeMb));
       body.append('quality', quality);
-      body.append('imageOnlyOptimization', String(isPdf && allowImageOnlyOptimization));
+      body.append('allowRasterization', String(isPdf && allowRasterization));
       const response = await fetch(`${apiBase}/pdf/compress`, { method: 'POST', body, credentials: 'include' });
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
@@ -99,13 +100,14 @@ export default function CompressFilesPage({ tool }) {
     <FileUploader tool={tool} onFiles={(newFiles) => { setFile(newFiles[0] || null); setResult(null); }}/>
     {file && <UploadedFileList files={file}/>}
     {file && isPdf && <section className="compression-preview-panel" aria-label="Original PDF preview"><h3>Original PDF preview</h3><Suspense fallback={<p role="status">Loading PDF preview…</p>}><PdfPagePreview file={file} selectedPages={[]} interactive={false}/></Suspense></section>}
-    {isPdf && <label className="compression-image-only-option"><input type="checkbox" checked={allowImageOnlyOptimization} onChange={(event) => setAllowImageOnlyOptimization(event.target.checked)}/> Allow image-based compression for scanned PDFs when safe</label>}
-    {isPdf && allowImageOnlyOptimization && <p className="small text-secondary">This option is used only when every page contains scanned images without selectable text, annotations, digital signatures, rotation, or cropped page bounds. It keeps page dimensions, but the output pages become images and may lose fine detail.</p>}
+    {isPdf && <label className="compression-image-only-option"><input type="checkbox" checked={allowRasterization} onChange={(event) => setAllowRasterization(event.target.checked)}/> Allow image-based compression to reduce the PDF further</label>}
+    {isPdf && allowRasterization && <p className="small text-secondary">Pages are saved as images. Text will no longer be selectable or searchable, and links, fields, comments, and other interactive content may not be preserved. PDFs with digital signatures, rotated pages, or cropped page bounds are not supported.</p>}
     <label className="mt-3">Maximum output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
         {targetOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
+      <small className="text-secondary">This is a maximum, not an exact target. A file already below it stays unchanged.</small>
     </label>
-    {(!isPdf || allowImageOnlyOptimization) && <label className="mt-3">Compression quality<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
+    {(!isPdf || allowRasterization) && <label className="mt-3">Compression quality<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
         <option value="clear">High clarity first</option>
         <option value="balanced">Balanced</option>
         <option value="smallest">Smallest size (lower clarity)</option>
@@ -132,7 +134,7 @@ export default function CompressFilesPage({ tool }) {
           {result.targetMet ? `Maximum met: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Maximum not met. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
           {' '}Original: {formatSize(result.originalSize)}; {Math.abs(result.compressionPercent).toFixed(1)}% {result.compressionPercent >= 0 ? 'smaller' : 'larger'} output.
         </p>
-        {result.rasterized && <p className="small text-warning">This PDF was rasterized to reduce its size; its text may no longer be selectable or searchable.</p>}
+        {result.rasterized && <p className="small text-warning">This PDF was saved as page images. Text is no longer selectable or searchable.</p>}
         {result.outputSize >= result.originalSize && !result.targetMet && <p className="small text-secondary">No smaller version could be produced at this quality. Try Balanced or Smallest.</p>}
       </>}
     </DownloadResultModal>

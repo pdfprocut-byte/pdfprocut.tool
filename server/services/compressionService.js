@@ -1,5 +1,5 @@
 import { createCanvas, loadImage } from '@napi-rs/canvas';
-import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { PDFDocument } from 'pdf-lib';
 import { unzipSync, zipSync } from 'fflate';
 import { extname } from 'node:path';
@@ -172,35 +172,22 @@ async function compressOfficeArchive(file, extension, targetBytes, quality) {
   return { buffer: best, type: packageInfo.contentType };
 }
 
-async function compressScannedImagePdf(file, targetBytes, quality, sourceDocument) {
+async function compressRasterizedPdf(file, targetBytes, quality, sourceDocument) {
   let pdfDocument;
   try {
     pdfDocument = await getDocument({ data: new Uint8Array(file.buffer), isEvalSupported: false }).promise;
     if (pdfDocument.numPages > maxPages) throw new ApiError(413, `PDF compression supports up to ${maxPages} pages per file`);
-    const imageOps = [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject, OPS.paintJpegXObject, OPS.paintImageXObjectRepeat, OPS.paintImageMaskXObjectRepeat].filter(Number.isInteger);
-    const allowedOps = [
-      OPS.save, OPS.restore, OPS.transform, OPS.setGState, OPS.dependency, OPS.beginMarkedContent,
-      OPS.beginMarkedContentProps, OPS.endMarkedContent,
-      ...imageOps
-    ].filter(Number.isInteger);
-    const allowedOpSet = new Set(allowedOps);
     const sourcePages = sourceDocument.getPages();
     const pageData = [];
     for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
       const renderedPage = await pdfDocument.getPage(pageNumber);
-      const textContent = await renderedPage.getTextContent();
-      const annotations = await renderedPage.getAnnotations({ intent: 'display' });
-      const operatorList = await renderedPage.getOperatorList();
-      const hasText = textContent.items.some((item) => typeof item.str === 'string' && item.str.trim().length > 0);
-      const hasImage = operatorList.fnArray.some((operation) => imageOps.includes(operation));
-      const hasUnsupportedContent = operatorList.fnArray.some((operation) => !allowedOpSet.has(operation));
       const sourcePage = sourcePages[pageNumber - 1];
       const mediaBox = sourcePage.getMediaBox();
       const cropBox = sourcePage.getCropBox();
       const sameBounds = Math.abs(mediaBox.x - cropBox.x) < 0.01 && Math.abs(mediaBox.y - cropBox.y) < 0.01
         && Math.abs(mediaBox.width - cropBox.width) < 0.01 && Math.abs(mediaBox.height - cropBox.height) < 0.01;
-      if (hasText || annotations.length || !hasImage || hasUnsupportedContent || renderedPage.rotate !== 0 || !sameBounds) {
-        throw new ApiError(422, 'Image-based optimization is available only for scanned PDFs containing images alone, with no selectable text, annotations, rotated pages, or cropped page bounds. The original was left unchanged.');
+      if (renderedPage.rotate !== 0 || !sameBounds) {
+        throw new ApiError(422, 'Image-based PDF compression requires pages without rotation or cropped page bounds. The original was left unchanged.');
       }
       pageData.push({ renderedPage, width: mediaBox.width, height: mediaBox.height });
     }
@@ -228,7 +215,7 @@ async function compressScannedImagePdf(file, targetBytes, quality, sourceDocumen
       const score = level.scale * level.quality;
       if (candidate.length <= targetBytes && score > bestScore) { best = candidate; bestScore = score; }
     }
-    if (!best) throw new ApiError(422, 'This scanned PDF could not meet the maximum using the selected quality settings. Choose a larger maximum.');
+    if (!best) throw new ApiError(422, 'This PDF could not meet the maximum using the selected quality settings. Choose a larger maximum or a smaller quality setting.');
     const outputDocument = await PDFDocument.load(best, { updateMetadata: false });
     const outputPages = outputDocument.getPages();
     if (outputPages.length !== pageData.length || pageData.some((page, index) => {
@@ -241,7 +228,7 @@ async function compressScannedImagePdf(file, targetBytes, quality, sourceDocumen
   }
 }
 
-async function compressPdf(file, targetBytes, quality, allowImageOnlyOptimization) {
+async function compressPdf(file, targetBytes, quality, allowRasterization) {
   if (file.buffer.length <= targetBytes) return { buffer: file.buffer, type: 'application/pdf', rasterized: false };
   if (/\/ByteRange\s*\[/i.test(file.buffer.toString('latin1'))) {
     throw new ApiError(422, 'This PDF has a digital signature. Changing its bytes would invalidate it, so it cannot be compressed safely.');
@@ -262,8 +249,8 @@ async function compressPdf(file, targetBytes, quality, allowImageOnlyOptimizatio
     });
     if (!dimensionsMatch) throw new ApiError(422, 'PDF page dimensions changed during safe optimization. The original file was left untouched.');
     if (normalized.length <= targetBytes) return { buffer: normalized, type: 'application/pdf', rasterized: false };
-    if (allowImageOnlyOptimization) return await compressScannedImagePdf(file, targetBytes, quality, sourceDocument);
-    throw new ApiError(422, `Safe PDF optimization produced a ${normalized.length.toLocaleString()} byte file, which is still above the selected maximum. This tool preserves text and page content instead of rasterizing the document; choose a larger maximum.`);
+    if (allowRasterization) return await compressRasterizedPdf(file, targetBytes, quality, sourceDocument);
+    throw new ApiError(422, `Safe PDF optimization produced a ${normalized.length.toLocaleString()} byte file, which is still above the selected maximum. To compress further, enable image-based compression; page text will no longer be selectable or searchable.`);
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error.name === 'PasswordException' || error.message?.toLowerCase().includes('password') || error.message?.toLowerCase().includes('encrypted')) {
@@ -277,8 +264,9 @@ export async function compressFile(file, targetSizeMb, quality = 'clear', option
   if (!['clear', 'balanced', 'smallest'].includes(quality)) throw new ApiError(400, 'Choose clear, balanced, or smallest compression quality');
   const targetBytes = Math.round(targetSizeMb * 1024 * 1024);
   const extension = extname(file.originalname || '').slice(1).toLowerCase();
+  const allowRasterization = Boolean(options.allowRasterization || options.imageOnlyOptimization);
   const result = extension === 'pdf'
-    ? await compressPdf(file, targetBytes, quality, Boolean(options.imageOnlyOptimization))
+    ? await compressPdf(file, targetBytes, quality, allowRasterization)
     : await compressOfficeArchive(file, officeExtension(file), targetBytes, quality);
   if (result.buffer.length > targetBytes) {
     throw new ApiError(422, 'Could not reduce this file below the selected maximum without more quality loss. Choose a larger maximum or a stronger compression setting.');
