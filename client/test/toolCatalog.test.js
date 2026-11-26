@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 import { socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../shared/imagePresets.mjs';
+import { getToolCategoryLabel } from '../src/tools.js';
+
+test('document menu category labels omit government wording', () => {
+  assert.equal(getToolCategoryLabel('Common Government Document Tools'), 'Common Document Tools');
+});
 
 test('the tool directory has the requested three sections', () => {
   assert.deepEqual([...new Set(toolCatalog.map(({ section }) => section))].sort(), ['Documents', 'Public Service', 'Social Media'].sort());

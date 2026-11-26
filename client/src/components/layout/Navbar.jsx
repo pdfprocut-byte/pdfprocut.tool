@@ -3,7 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { FaChevronDown, FaRegUser } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { getToolCategoryClass, tools } from '../../tools.js';
+import { getToolCategoryClass, getToolCategoryLabel, tools } from '../../tools.js';
 import BrandLogo from './BrandLogo.jsx';
 import '../../styles/navbar.css';
 
@@ -113,7 +113,7 @@ export default function Navbar() {
                   </div>
                   <div className="pdfpro-section-categories-grid">
                     {sectionCategories.map(([category, categoryTools]) => <section className={`pdfpro-section-category-card ${getToolCategoryClass(category)}`} key={category}>
-                      <h3>{category}</h3>
+                      <h3>{section === 'Documents' ? getToolCategoryLabel(category) : category}</h3>
                       <div className="pdfpro-section-tool-list">
                         {categoryTools.map((tool) => <Link className="pdfpro-section-tool-option" key={tool.slug} to={`/tools/${tool.slug}`} onClick={closeMenus}>
                           <span className="pdfpro-tool-icon"><tool.icon aria-hidden="true"/></span><span>{tool.name}</span>
