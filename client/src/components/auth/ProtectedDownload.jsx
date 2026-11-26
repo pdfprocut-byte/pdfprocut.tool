@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import GoogleSignInButton from './GoogleSignInButton.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { authRequest } from '../../lib/authApi.js';
+import { consumeGuestToolUse, guestToolUseLimit } from '../../lib/guestToolAccess.js';
 import '../../styles/protectedDownload.css';
 
 export default function ProtectedDownload({ href, download, className, children, onDownloaded }) {
@@ -18,6 +19,7 @@ export default function ProtectedDownload({ href, download, className, children,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [guestLimitReached, setGuestLimitReached] = useState(false);
   const downloadTimer = useRef(null);
 
   useEffect(() => () => window.clearTimeout(downloadTimer.current), []);
@@ -36,6 +38,19 @@ export default function ProtectedDownload({ href, download, className, children,
       downloadTimer.current = null;
       onDownloaded?.();
     }, 160);
+  };
+
+  const requestDownload = () => {
+    if (user || consumeGuestToolUse()) {
+      downloadFile();
+      return;
+    }
+    setGuestLimitReached(true);
+    setIsOpen(true);
+    setIsSignedIn(false);
+    setMode('signin');
+    setError('');
+    setNotice('');
   };
 
   const signIn = async (event) => {
@@ -136,10 +151,10 @@ export default function ProtectedDownload({ href, download, className, children,
     }
   };
 
-  if (user && !isOpen) return <button className={className} type="button" onClick={downloadFile}>{children}</button>;
+  if (user && !isOpen) return <button className={className} type="button" onClick={requestDownload}>{children}</button>;
 
   return <>
-    <button className={className} type="button" disabled={loading} aria-haspopup="dialog" onClick={() => { setIsOpen(true); setIsSignedIn(false); setError(''); }}>
+    <button className={className} type="button" disabled={loading} aria-haspopup="dialog" onClick={requestDownload}>
       {children}
     </button>
     {isOpen && createPortal(<div className="download-auth-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setIsOpen(false); }}>
@@ -162,9 +177,9 @@ export default function ProtectedDownload({ href, download, className, children,
           </form>
           <p className="download-auth-register"><button type="button" disabled={busy} onClick={resendVerification}>Resend code</button><span> · </span><button type="button" disabled={busy} onClick={() => { setMode('signin'); setError(''); setNotice(''); }}>Back to sign in</button></p>
         </> : <>
-          <span className="download-auth-kicker">ACCOUNT REQUIRED</span>
-          <h2 id="download-auth-title">{mode === 'register' ? 'Create an account' : 'Sign in to download'}</h2>
-          <p>Your processed file will stay here while you sign in or create an account.</p>
+          <span className="download-auth-kicker">{guestLimitReached ? 'FREE USES COMPLETE' : 'ACCOUNT REQUIRED'}</span>
+          <h2 id="download-auth-title">{mode === 'register' ? 'Create an account' : guestLimitReached ? 'Continue using PDF Pro Cut' : 'Sign in to download'}</h2>
+          <p>{guestLimitReached ? `You have used your ${guestToolUseLimit} free tool downloads. Log in or create an account to continue. Your current file will stay ready.` : 'Your processed file will stay here while you sign in or create an account.'}</p>
           {error && <p className="download-auth-error" role="alert">{error}</p>}
           {notice && <p className="download-auth-notice" role="status">{notice}</p>}
           <form className="download-auth-form" onSubmit={mode === 'register' ? register : signIn}>

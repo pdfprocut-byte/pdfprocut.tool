@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
 import { governmentImagePresets, governmentPresetByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
 import '../styles/governmentImageTools.css';
 
@@ -622,7 +623,7 @@ export default function GovernmentImageToolPage({ tool }) {
         <img className={socialProfileTool ? 'social-profile-result-image' : undefined} src={result.url} alt={`Processed ${result.name} preview`}/>
         <p>{result.width} × {result.height} px · {(result.blob.size / 1024).toFixed(1)} KB</p>
         {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? 'Maximum size target not reached; best available result shown.' : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : 'File-size target reached.'}</p>}
-        <a className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</a>
+        <ProtectedDownload className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</ProtectedDownload>
       </article>)}</div>
     </section>}
     <p className="government-tool-reminder">Before submitting, compare the downloaded image's dimensions, format, file size, background, and any other rules against the official application instructions.</p>
