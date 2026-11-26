@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
-import { governmentImagePresets, governmentPresetByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
+import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
@@ -326,7 +326,7 @@ export default function GovernmentImageToolPage({ tool }) {
   const slots = pair
     ? [{ key: 'photo', label: 'Photo' }, { key: 'signature', label: 'Signature' }]
     : [{ key: 'image', label: socialProfileTool ? 'Profile photo' : config.subject ? `${config.subject[0].toUpperCase()}${config.subject.slice(1)}` : 'Image' }];
-  const hasNameDateOption = tool.slug === 'kerala-psc-photo-resizer' || tool.slug === 'psc-photo-signature-maker';
+  const hasNameDateOption = tool.category === 'Kerala PSC Tools' && (config.subject === 'photo' || config.kind === 'pair');
   const [socialPresetId, setSocialPresetId] = useState(config.defaultPreset || socialPresets[0]?.id || '');
   const selectedSocialPreset = socialPresets.find((preset) => preset.id === socialPresetId) || socialPresets[0];
   const presetForSlot = (slot) => socialMediaTool ? selectedSocialPreset : resolveGovernmentPreset(tool, slot);
@@ -358,6 +358,10 @@ export default function GovernmentImageToolPage({ tool }) {
   const dpiMode = config.kind === 'dpi';
   const hasCamera = config.kind === 'live-photo';
   const currentPreset = presetForSlot(slots[0].key);
+  const currentGuidance = governmentToolGuidanceByTool[tool.slug];
+  const officialSources = socialMediaTool
+    ? selectedSocialPreset.sourceUrl ? [{ label: selectedSocialPreset.sourceLabel || `${selectedSocialPreset.label} image guidance`, url: selectedSocialPreset.sourceUrl }] : []
+    : currentPreset?.sources || (currentPreset?.sourceUrl ? [{ label: currentPreset.sourceLabel || 'Official size guidance', url: currentPreset.sourceUrl }] : currentGuidance?.sources || []);
   const showSizeTarget = compression || Boolean(currentPreset?.maxKb);
 
   const makeObjectUrl = (blob) => {
@@ -541,8 +545,8 @@ export default function GovernmentImageToolPage({ tool }) {
     <div className="government-tool-local-note" role="note">
       <p>{socialMediaTool
         ? `${selectedSocialPreset.guidance}${socialProfileTool ? ' Profile photos are commonly shown as circles; check the preview after cropping.' : ''}`
-        : currentPreset?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
-      {(socialMediaTool ? selectedSocialPreset.sourceUrl : currentPreset?.sourceUrl) && <a href={socialMediaTool ? selectedSocialPreset.sourceUrl : currentPreset.sourceUrl} target="_blank" rel="noreferrer">{socialMediaTool ? selectedSocialPreset.sourceLabel || `${selectedSocialPreset.label} image guidance` : currentPreset.sourceLabel || 'Official size guidance'} ↗</a>}
+        : currentPreset?.note || currentGuidance?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
+      {officialSources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.label} ↗</a>)}
       <p className="government-tool-privacy-note">Your image stays in this browser. Preset sizes, dimensions, frame handling, and output format can be changed before download.</p>
     </div>
     {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
@@ -597,7 +601,7 @@ export default function GovernmentImageToolPage({ tool }) {
       {!dpiMode && <label className="government-setting-check"><input type="checkbox" checked={maintainAspect} onChange={(event) => setMaintainAspect(event.target.checked)}/> Keep the selected aspect ratio when changing dimensions</label>}
       <label className="government-inline-field">Frame handling<select className="form-select" value={fitMode} onChange={(event) => setFitMode(event.target.value)}><option value="cover">Crop to fill the frame</option><option value="contain">Fit the whole image inside the frame</option></select><small>Crop to fill trims edges to match the selected ratio. Fit keeps the full image and may add white space.</small></label>
       {hasNameDateOption && <>
-        <label className="government-setting-check"><input type="checkbox" checked={addNameDate} onChange={(event) => { clearResults(); setAddNameDate(event.target.checked); }}/> Print name and date inside the photo frame</label>
+        <p className="small text-secondary">Kerala PSC OTR requires the applicant name and date of the photo at the bottom. Enter both to continue.</p>
         {addNameDate && <div className="government-name-date-fields">
           <label className="government-inline-field">Name<input className="form-control" type="text" maxLength="40" autoComplete="name" placeholder="Enter the applicant name" value={photoName} onChange={(event) => { clearResults(); setPhotoName(event.target.value); }}/></label>
           <label className="government-inline-field">Date<input className="form-control" type="date" value={photoDate} onChange={(event) => { clearResults(); setPhotoDate(event.target.value); }}/></label>

@@ -60,16 +60,14 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const {
-    profile, history, documents, hasProfile, loading, unlocked, storageError,
-    createProfile, unlockProfile, updateProfile, lockProfile, deleteProfile, clearHistory, removeHistoryItem,
+    profile, history, documents, hasProfile, loading, storageError,
+    createProfile, updateProfile, deleteProfile, clearHistory, removeHistoryItem,
     downloadDocument, renameDocument, removeDocument, setPendingToolFile
   } = useProfile();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [photo, setPhoto] = useState('');
-  const [passcode, setPasscode] = useState('');
-  const [confirmPasscode, setConfirmPasscode] = useState('');
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -133,14 +131,10 @@ export default function ProfilePage() {
     event.preventDefault();
     setError('');
     setNotice('');
-    if (passcode.length < 8) return setError('Use a profile passcode with at least 8 characters.');
-    if (passcode !== confirmPasscode) return setError('The passcodes do not match.');
     setBusy(true);
     try {
-      await createProfile({ name, email, phone, photo, passcode });
-      setPasscode('');
-      setConfirmPasscode('');
-      setNotice('Your encrypted local profile is ready.');
+      await createProfile({ name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), photo });
+      setNotice('Your local profile is ready on this device.');
     } catch (saveError) {
       setError(saveError.message || 'Could not create your local profile.');
     } finally { setBusy(false); }
@@ -160,25 +154,12 @@ export default function ProfilePage() {
     } finally { setBusy(false); }
   };
 
-  const unlock = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      await unlockProfile(passcode);
-      setPasscode('');
-    } catch (unlockError) {
-      setError(unlockError.message || 'Could not unlock your profile.');
-    } finally { setBusy(false); }
-  };
-
   const removeProfile = async () => {
-    if (!window.confirm('Erase this encrypted profile and its local work history from this browser?')) return;
+    if (!window.confirm('Erase this local profile and its saved work history from this browser?')) return;
     setBusy(true);
     try {
       await deleteProfile();
       setEditing(false);
-      setPasscode('');
       setNotice('Local profile and work history erased.');
     } catch {
       setError('Could not erase the local profile from browser storage.');
@@ -257,27 +238,11 @@ export default function ProfilePage() {
 
   if (loading) return <main className="container py-5 profile-page"><p>Loading local profile…</p></main>;
 
-  if (hasProfile && !unlocked) return <main className="container py-5 profile-page">
-    <section className="profile-lock-card">
-      <span className="profile-eyebrow">PRIVATE ON THIS DEVICE</span>
-      <h1>Unlock your profile</h1>
-      <p>Your profile and work history are encrypted in this browser. Enter your profile passcode to open them.</p>
-      {error && <p className="profile-error" role="alert">{error}</p>}
-      {storageError && <p className="profile-error" role="alert">{storageError}</p>}
-      <form className="profile-form" onSubmit={unlock}>
-        <label>Profile passcode<input type="password" autoComplete="current-password" minLength="8" maxLength="128" required value={passcode} onChange={(event) => setPasscode(event.target.value)}/></label>
-        <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Unlocking…' : 'Unlock profile'}</button>
-      </form>
-      <p className="profile-private-note">If you forget the passcode, it cannot be recovered. You can erase the encrypted profile and create a new one.</p>
-      <button className="profile-text-button" type="button" onClick={removeProfile}>Erase this local profile</button>
-    </section>
-  </main>;
-
   if (!hasProfile) return <main className="container py-5 profile-page">
     <section className="profile-editor-card">
-      <span className="profile-eyebrow">PRIVATE PROFILE</span>
+      <span className="profile-eyebrow">LOCAL PROFILE</span>
       <h1>Create your profile</h1>
-      <p>Your details and completed work history stay in this browser and are encrypted with your passcode.</p>
+      <p>Your profile details and work history are saved in this browser. They are not encrypted by the app, so avoid saving sensitive information here.</p>
       {error && <p className="profile-error" role="alert">{error}</p>}
       {notice && <p className="profile-success" role="status">{notice}</p>}
       {storageError && <p className="profile-error" role="alert">{storageError}</p>}
@@ -286,11 +251,8 @@ export default function ProfilePage() {
         <label>Gmail ID / email<input type="email" autoComplete="email" required maxLength="254" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@gmail.com"/></label>
         <label>Phone number <span>(optional)</span><input type="tel" autoComplete="tel" maxLength="30" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Add a phone number"/></label>
         <label>Profile photo <span>(optional)</span><input type="file" accept="image/*" onChange={changePhoto}/></label>
-        <div className="profile-photo-preview"><ProfileAvatar photo={photo} name={name}/><span>Photo is resized before it is encrypted and stored.</span></div>
-        <label>Profile passcode<input type="password" autoComplete="new-password" required minLength="8" maxLength="128" value={passcode} onChange={(event) => setPasscode(event.target.value)} placeholder="At least 8 characters"/></label>
-        <label>Confirm passcode<input type="password" autoComplete="new-password" required minLength="8" maxLength="128" value={confirmPasscode} onChange={(event) => setConfirmPasscode(event.target.value)}/></label>
-        <p className="profile-private-note">Keep this passcode safe. It is used to encrypt your profile and cannot be reset.</p>
-        <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating profile…' : 'Create encrypted profile'}</button>
+        <div className="profile-photo-preview"><ProfileAvatar photo={photo} name={name}/><span>Your resized photo is stored in this browser.</span></div>
+        <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Creating profile…' : 'Create local profile'}</button>
       </form>
     </section>
   </main>;
@@ -298,8 +260,8 @@ export default function ProfilePage() {
   return <main className="container py-5 profile-page">
     <section className="profile-welcome-card">
       <ProfileAvatar photo={profile.photo} name={profile.name}/>
-      <div className="profile-welcome-info"><span className="profile-eyebrow">YOUR PRIVATE SPACE</span><h1>{profile.name}</h1><p>{profile.email}{profile.phone ? ` · ${profile.phone}` : ''}</p><span className="profile-local-badge">Encrypted on this device</span></div>
-      <div className="profile-welcome-actions"><button className="btn btn-outline-primary" type="button" onClick={() => { setEditing((value) => !value); setNotice(''); }}> {editing ? 'Close editor' : 'Edit profile'}</button><button className="btn btn-outline-secondary" type="button" onClick={lockProfile}>Lock profile</button></div>
+      <div className="profile-welcome-info"><span className="profile-eyebrow">LOCAL PROFILE</span><h1>{profile.name}</h1><p>{profile.email}{profile.phone ? ` · ${profile.phone}` : ''}</p><span className="profile-local-badge">Saved in this browser</span></div>
+      <div className="profile-welcome-actions"><button className="btn btn-outline-primary" type="button" onClick={() => { setEditing((value) => !value); setNotice(''); }}> {editing ? 'Close editor' : 'Edit profile'}</button></div>
     </section>
     {error && <p className="profile-error" role="alert">{error}</p>}
     {notice && <p className="profile-success" role="status">{notice}</p>}
@@ -322,7 +284,7 @@ export default function ProfilePage() {
     </section>}
 
     <section className="profile-documents-card" aria-labelledby="profile-documents-title">
-      <div className="profile-history-heading"><div><span className="profile-eyebrow">ENCRYPTED LOCAL ARCHIVE</span><h2 id="profile-documents-title">Saved documents</h2><p>Files up to 50 MB stay here for 30 minutes, then are automatically removed. Download a copy to keep it.</p></div><span className="profile-document-count">{documents.length} {documents.length === 1 ? 'file' : 'files'}</span></div>
+      <div className="profile-history-heading"><div><span className="profile-eyebrow">LOCAL ARCHIVE</span><h2 id="profile-documents-title">Saved documents</h2><p>The app checks for and removes saved files after 30 minutes while the site is open. Download a copy to keep it.</p></div><span className="profile-document-count">{documents.length} {documents.length === 1 ? 'file' : 'files'}</span></div>
       {documents.length ? <div className="profile-document-list">{documents.map((document) => <article className="profile-document-card" key={document.id}>
         <SavedDocumentThumbnail document={document}/>
         {editingDocument === document.id ? <form className="profile-document-rename" onSubmit={saveDocumentRename}>
@@ -335,7 +297,7 @@ export default function ProfilePage() {
           <button type="button" onClick={() => launchDocumentInTools(document)}><FaExternalLinkAlt aria-hidden="true"/> Edit with tools</button>
           <button className="profile-document-remove" type="button" onClick={() => handleRemoveDocument(document)}><FaTrashAlt aria-hidden="true"/> Remove</button>
         </div>}
-      </article>)}</div> : <div className="profile-empty-history"><p>Completed files will be saved here automatically.</p><span>Files are kept on this device for 30 minutes. Download a copy to keep it.</span><div><Link to="/tools">Browse tools</Link></div></div>}
+      </article>)}</div> : <div className="profile-empty-history"><p>Completed files will be saved here automatically.</p><span>The app removes saved files after 30 minutes while the site is open. Download a copy to keep it.</span><div><Link to="/tools">Browse tools</Link></div></div>}
     </section>
 
     <section className="profile-history-card" aria-labelledby="profile-history-title">
@@ -355,7 +317,7 @@ export default function ProfilePage() {
         </li>;
       })}</ul> : history.length ? <div className="profile-empty-history"><p>No work matches these filters.</p><button className="profile-text-button" type="button" onClick={() => { setHistorySearch(''); setHistoryCategory('All work'); setHistoryPeriod('all'); }}>Reset filters</button></div> : <div className="profile-empty-history"><p>Completed work will appear here after you use a tool.</p><Link to="/tools">Browse tools</Link></div>}
     </section>
-    <p className="profile-data-note">Work details and saved output files stay encrypted on this device. Input files are not archived.</p>
+    <p className="profile-data-note">Profile details, work history, and saved outputs are stored locally in this browser without app-level encryption. Input files are not archived.</p>
     <button className="profile-text-button profile-delete-button" type="button" onClick={removeProfile}>Erase profile and local work history</button>
     <ConfirmActionDialog
       open={Boolean(documentToRemove)}
@@ -367,41 +329,4 @@ export default function ProfilePage() {
       onConfirm={confirmRemoveDocument}
     />
   </main>;
-}
-
-export function ProfileOperationPrompt() {
-  const { hasProfile, accessPrompt, unlockProfile, dismissAccessPrompt } = useProfile();
-  const [passcode, setPasscode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  if (!accessPrompt) return null;
-
-  const unlock = async (event) => {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try { await unlockProfile(passcode); setPasscode(''); }
-    catch (unlockError) { setError(unlockError.message || 'Could not unlock your profile.'); }
-    finally { setBusy(false); }
-  };
-
-  return <div className="profile-prompt-backdrop" role="presentation">
-    <section className="profile-prompt-card" role="dialog" aria-modal="true" aria-labelledby="profile-prompt-title">
-      <button className="profile-prompt-close" type="button" onClick={dismissAccessPrompt} aria-label="Close">×</button>
-      <span className="profile-eyebrow">SAVE COMPLETED WORK</span>
-      <h2 id="profile-prompt-title">{hasProfile ? 'Unlock your profile' : 'Create a profile to save this work'}</h2>
-      {hasProfile ? <>
-        <p>Enter your profile passcode to save this completed work and keep recording future work on this device.</p>
-        {error && <p className="profile-error" role="alert">{error}</p>}
-        <form className="profile-form" onSubmit={unlock}>
-          <label>Profile passcode<input type="password" autoComplete="current-password" required value={passcode} onChange={(event) => setPasscode(event.target.value)}/></label>
-          <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Unlocking…' : 'Unlock and save work'}</button>
-        </form>
-      </> : <>
-        <p>Set up the encrypted archive on your profile page to save this completed file and future work on this device.</p>
-        <Link className="btn btn-primary" to="/profile#saved-documents">Set up file archive</Link>
-      </>}
-      <button className="profile-text-button" type="button" onClick={dismissAccessPrompt}>Not now</button>
-    </section>
-  </div>;
 }

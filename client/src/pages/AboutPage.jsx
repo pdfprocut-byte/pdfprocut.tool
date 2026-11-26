@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FaArrowRight, FaBolt, FaLayerGroup, FaLock, FaMagic } from 'react-icons/fa';
+import { contactEmail } from '../../../shared/contact.mjs';
 import '../styles/infoPages.css';
 
 export default function AboutPage() {
@@ -10,6 +11,8 @@ export default function AboutPage() {
     </div></section>
 
     <section className="about-values"><div className="container"><div className="about-section-heading"><span className="pdfpro-info-eyebrow">WHY PDF PRO CUT</span><h2>Built around the way<br/>you already work.</h2></div><div className="about-value-grid"><article><span className="about-value-icon"><FaLayerGroup/></span><h3>Everything together</h3><p>Organize, edit, convert, and create without bouncing between different apps.</p></article><article><span className="about-value-icon"><FaBolt/></span><h3>Less friction</h3><p>Clear tools and focused options help you finish the task without the clutter.</p></article><article><span className="about-value-icon"><FaLock/></span><h3>Work with confidence</h3><p>Your document workflow stays simple, private, and easy to understand.</p></article></div></div></section>
+
+    <section className="about-developer"><div className="container about-developer-card"><div><span className="pdfpro-info-eyebrow">THE DEVELOPER</span><h2>Made by Arun S.L.</h2><p>PDF Pro Cut is developed in Kerala, India.</p></div><div className="about-developer-contact"><span>Contact</span><a href={`mailto:${contactEmail}`}>{contactEmail}</a><small>Kerala, India</small></div></div></section>
 
     <section className="about-tools-highlight"><div className="container about-tools-highlight-inner"><div><span className="pdfpro-info-eyebrow">MADE FOR THE EVERYDAY</span><h2>One place for every<br/><em>important file.</em></h2></div><p>Merge files, manage pages, add watermarks and page numbers, create PDFs from text or images, and make scanned pages searchable.</p><Link to="/tools" className="about-text-link">Find the right tool <FaArrowRight/></Link></div></section>
   </main>;

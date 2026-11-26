@@ -272,9 +272,6 @@ export function ProfileProvider({ children }) {
     setStorageError('');
   }, [ownerId]);
 
-  const lockProfile = useCallback(() => {}, []);
-  const unlockProfile = useCallback(async () => {}, []);
-  const dismissAccessPrompt = useCallback(() => {}, []);
   const setPendingToolFile = useCallback((file) => setPendingToolFileState(file), []);
   const clearPendingToolFile = useCallback(() => setPendingToolFileState(null), []);
 
@@ -292,17 +289,12 @@ export function ProfileProvider({ children }) {
     profile: currentArchive.profile,
     history: currentArchive.history,
     documents: currentArchive.documents,
-    hasProfile: true,
+    hasProfile: Boolean(currentArchive.profile),
     loading: !archiveReady,
-    unlocked: true,
-    accessPrompt: false,
     storageError,
     createProfile,
-    unlockProfile,
     updateProfile,
     recordOperation,
-    dismissAccessPrompt,
-    lockProfile,
     deleteProfile,
     clearHistory,
     removeHistoryItem,
@@ -312,7 +304,7 @@ export function ProfileProvider({ children }) {
     pendingToolFile,
     setPendingToolFile,
     clearPendingToolFile
-  }), [currentArchive, archiveReady, storageError, createProfile, unlockProfile, updateProfile, recordOperation, dismissAccessPrompt, lockProfile, deleteProfile, clearHistory, removeHistoryItem, downloadDocument, renameDocument, removeDocument, pendingToolFile, setPendingToolFile, clearPendingToolFile]);
+  }), [currentArchive, archiveReady, storageError, createProfile, updateProfile, recordOperation, deleteProfile, clearHistory, removeHistoryItem, downloadDocument, renameDocument, removeDocument, pendingToolFile, setPendingToolFile, clearPendingToolFile]);
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }

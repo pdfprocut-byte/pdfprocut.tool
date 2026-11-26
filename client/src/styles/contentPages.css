@@ -37,6 +37,9 @@
 .tool-guide-faq h3{font-size:1.05rem}
 .tool-guide-faq details:last-child{padding-bottom:0}
 .tool-guide-directory-link{display:inline-block;margin-top:1.2rem;text-decoration:none;font-size:.84rem}
+.tool-guide-sources{display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1rem}
+.tool-guide-sources a{padding:.5rem .7rem;border:1px solid #e4e8f0;border-radius:999px;background:#fff;color:#4f6388;font-size:.75rem;font-weight:650;text-decoration:none}
+.tool-guide-sources a:hover{border-color:#d7a6ad;background:#fff8f8;color:#b2273b}
 .contact-email-note{display:block;color:#667085;font-size:.76rem;line-height:1.6}
 .contact-not-configured{padding:1.1rem;border:1px solid #f1d3a8;border-radius:12px;background:#fff9ed;color:#6d552d;font-size:.88rem;line-height:1.6}
 .contact-not-configured p{margin:.45rem 0 0;color:#75664f;font-size:.82rem}

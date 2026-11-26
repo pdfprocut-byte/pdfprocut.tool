@@ -1,5 +1,6 @@
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 import { guideFaqs, toolGuides } from '../../shared/toolGuides.mjs';
+import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool } from '../../shared/imagePresets.mjs';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const stopWords = new Set('a an all and are as at be can do does every for from how i in is it me my of on or our pdf please the this that to use want what when where which with you your app tool file page engane cheyy cheyyam cheyyan venam undo oru aanu'.split(' '));
@@ -128,11 +129,17 @@ function listTools(malayalam) {
 
 function buildToolReply(tool, malayalam) {
   const guide = toolGuides[tool.slug];
+  const preset = governmentImagePresets[governmentPresetByTool[tool.slug]];
+  const officialGuidance = governmentToolGuidanceByTool[tool.slug];
   const intro = malayalam ? `${tool.name} use cheyyam.` : `For this, use ${tool.name}.`;
   const overview = guide?.overview || tool.description;
   const steps = guide?.steps?.length ? `\n\nSteps:\n${guide.steps.map((step, index) => `${index + 1}. ${step}`).join('\n')}` : '';
   const limits = guide?.limits ? `\n\nLimits: ${guide.limits}` : '';
-  return `${intro}\n${overview}${steps}${limits}\n\nOpen: /tools/${tool.slug} · Guide: /tools/${tool.slug}#guide`;
+  const officialNote = officialGuidance?.note || preset?.note;
+  const officialLinks = officialGuidance?.sources || preset?.sources || (preset?.sourceUrl ? [{ url: preset.sourceUrl }] : []);
+  const requirements = officialNote ? `\n\nOfficial application guidance: ${officialNote}` : '';
+  const sources = officialLinks.length ? `\n\nOfficial sources: ${officialLinks.map(({ url }) => url).join(' · ')}` : '';
+  return `${intro}\n${overview}${steps}${limits}${requirements}${sources}\n\nOpen: /tools/${tool.slug} · Guide: /tools/${tool.slug}#guide`;
 }
 
 function isFollowUp(question) {
