@@ -15,7 +15,7 @@ function groupToolsByCategory(sectionTools) {
     if (!groups.has(tool.category)) groups.set(tool.category, []);
     groups.get(tool.category).push(tool);
   });
-  return [...groups.entries()];
+  return [...groups.entries()].sort(([, firstTools], [, secondTools]) => secondTools.length - firstTools.length);
 }
 
 export default function Navbar() {

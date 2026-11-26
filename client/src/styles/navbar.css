@@ -93,29 +93,31 @@
 .pdfpro-section-trigger-row{display:flex;align-items:center}
 .pdfpro-section-menu+.pdfpro-section-menu .pdfpro-section-link::before{content:'|';margin-right:.45rem;color:#aab0bd;font-weight:400}
 .pdfpro-section-menu .pdfpro-section-link{padding-inline:.45rem}
-.pdfpro-section-dropdown{position:absolute;top:100%;left:50%;z-index:1040;display:none;width:min(calc(100vw - 2rem),112rem);max-height:min(calc(100vh - 6rem),52rem);overflow:auto;padding:1rem;border:1px solid #ddd5f4;border-radius:20px;background:linear-gradient(135deg,#fffaf4ed 0%,#f7f1ffed 48%,#eef9ffed 100%);box-shadow:0 24px 65px #17203338;transform:translateX(-50%);transform-origin:top center;backdrop-filter:blur(18px)}
+.pdfpro-section-dropdown{position:absolute;top:100%;left:50%;z-index:1040;display:none;width:min(calc(100vw - 2rem),112rem);max-height:min(calc(100vh - 6rem),52rem);overflow:auto;padding:1rem;border:1px solid #ddd5f4;border-radius:20px;background:linear-gradient(135deg,#fffaf4 0%,#f7f1ff 48%,#eef9ff 100%);box-shadow:0 24px 65px #17203338;transform:translateX(-50%);transform-origin:top center;backdrop-filter:blur(18px);white-space:normal}
 .pdfpro-section-dropdown.is-open{display:block;animation:pdfpro-section-dropdown-in .28s cubic-bezier(.2,.8,.2,1) both}
 .pdfpro-section-dropdown-heading{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:.85rem;padding:.2rem .2rem .7rem;border-bottom:1px solid #dfd8ed}
 .pdfpro-section-dropdown-heading h2{margin:0;color:#30384b;font-size:.86rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .pdfpro-section-dropdown-heading>a{padding:.35rem .55rem;border-radius:8px;color:#5940bb;font-size:.72rem;font-weight:750;text-decoration:none}
 .pdfpro-section-dropdown-heading>a:hover{background:#fff;color:#a51d2e}
 .pdfpro-section-categories-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.85rem;align-items:stretch}
-.pdfpro-section-category-card{--card-start:#fff0e9;--card-end:#ffe5db;--card-ink:#a34234;position:relative;isolation:isolate;min-width:0;min-height:13rem;padding:.95rem;border:1px solid color-mix(in srgb,var(--card-ink),#fff 66%);border-radius:18px;background:radial-gradient(ellipse at 8% 0%,#ffffffc9,transparent 45%),linear-gradient(145deg,var(--card-start),var(--card-end));box-shadow:0 9px 22px color-mix(in srgb,var(--card-ink),transparent 84%),inset 0 1px #ffffffed,inset 0 -2px 0 color-mix(in srgb,var(--card-ink),transparent 88%);transform:perspective(1000px) translateZ(0);transform-style:preserve-3d;transition:transform .32s cubic-bezier(.16,1,.3,1),border-color .25s ease,box-shadow .3s ease}
+.pdfpro-section-category-card{--card-start:#fff0e9;--card-end:#ffe5db;--card-ink:#a34234;position:relative;isolation:isolate;display:flex;min-width:0;min-height:13rem;flex-direction:column;padding:.95rem;border:1px solid color-mix(in srgb,var(--card-ink),#fff 66%);border-radius:18px;background:radial-gradient(ellipse at 8% 0%,#ffffffc9,transparent 45%),linear-gradient(145deg,var(--card-start),var(--card-end));box-shadow:0 9px 22px color-mix(in srgb,var(--card-ink),transparent 84%),inset 0 1px #ffffffed,inset 0 -2px 0 color-mix(in srgb,var(--card-ink),transparent 88%);transform:perspective(1000px) translateZ(0);transform-style:preserve-3d;transition:transform .38s cubic-bezier(.16,1,.3,1),border-color .25s ease,box-shadow .35s ease}
 .pdfpro-section-category-card:before{position:absolute;inset:1px;z-index:-1;border:1px solid #ffffff8c;border-radius:17px;content:"";pointer-events:none}
 .pdfpro-section-category-card:nth-child(6n+2){--card-start:#fff4c8;--card-end:#e3fbf3;--card-ink:#26826e}
 .pdfpro-section-category-card:nth-child(6n+3){--card-start:#dff0ff;--card-end:#e6e2ff;--card-ink:#3d5cab}
 .pdfpro-section-category-card:nth-child(6n+4){--card-start:#ffe3ef;--card-end:#f5e2ff;--card-ink:#9c3c84}
 .pdfpro-section-category-card:nth-child(6n+5){--card-start:#dbfff0;--card-end:#d9efff;--card-ink:#287b67}
 .pdfpro-section-category-card:nth-child(6n){--card-start:#f0e2ff;--card-end:#dff7ff;--card-ink:#6940a4}
-.pdfpro-section-category-card:hover,.pdfpro-section-category-card:focus-within{z-index:2;border-color:color-mix(in srgb,var(--card-ink),#fff 40%);box-shadow:0 22px 38px color-mix(in srgb,var(--card-ink),transparent 74%),inset 0 1px #fff;transform:perspective(1000px) translateY(-6px) rotateX(.9deg) rotateY(-.7deg) scale(1.025) translateZ(16px)}
-.pdfpro-section-category-card h3{min-height:1.35rem;margin:0 0 .65rem;color:var(--card-ink);font-size:.72rem;font-weight:820;letter-spacing:.065em;text-transform:uppercase;overflow-wrap:anywhere}
+.pdfpro-section-category-card:focus-within{z-index:10;border-color:color-mix(in srgb,var(--card-ink),#fff 40%);box-shadow:0 22px 38px color-mix(in srgb,var(--card-ink),transparent 74%),inset 0 1px #fff;transform:perspective(1000px) translateY(-4px) scale(1.02) translateZ(12px)}
+.pdfpro-section-category-card h3{min-height:2rem;margin:0 0 .65rem;color:var(--card-ink);font-size:.72rem;font-weight:820;letter-spacing:.065em;line-height:1.3;text-align:left;text-transform:uppercase;white-space:normal;overflow-wrap:anywhere}
 .pdfpro-section-dropdown.is-open .pdfpro-section-category-card{animation:pdfpro-section-card-in .4s cubic-bezier(.2,.8,.2,1) backwards}
 .pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(2){animation-delay:.045s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(3){animation-delay:.09s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(4){animation-delay:.135s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(5){animation-delay:.18s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(6){animation-delay:.225s}
-.pdfpro-section-tool-list{display:grid;grid-template-columns:1fr;gap:.32rem}
-.pdfpro-section-tool-option{display:flex;align-items:center;gap:.55rem;min-width:0;min-height:2.65rem;padding:.4rem .45rem;border:1px solid #ffffffd1;border-radius:10px;background:linear-gradient(150deg,#ffffff,#fbfaff);box-shadow:0 3px 8px #19213a12,inset 0 1px #fff;color:#343b4c;font-size:.75rem;font-weight:650;line-height:1.3;text-decoration:none;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-.pdfpro-section-tool-option>span:last-child{min-width:0;overflow-wrap:anywhere}
+.pdfpro-section-tool-list{display:grid;flex:1;grid-template-columns:1fr;align-content:space-between;gap:.38rem}
+.pdfpro-section-tool-option{display:flex;align-items:center;gap:.55rem;min-width:0;min-height:2.65rem;padding:.4rem .45rem;border:1px solid #ffffffd1;border-radius:10px;background:linear-gradient(150deg,#ffffff,#fbfaff);box-shadow:0 3px 8px #19213a12,inset 0 1px #fff;color:#343b4c;font-size:.75rem;font-weight:650;line-height:1.3;text-align:left;text-decoration:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .18s ease}
+.pdfpro-section-tool-option>span:last-child{min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
 .pdfpro-section-tool-option .pdfpro-tool-icon{border:1px solid #ffffffd9;border-radius:9px;background:linear-gradient(140deg,var(--card-start),var(--card-end));box-shadow:0 4px 9px color-mix(in srgb,var(--card-ink),transparent 82%),inset 0 1px #ffffffde;color:var(--card-ink)}
 .pdfpro-section-tool-option .pdfpro-tool-icon svg{filter:drop-shadow(0 1px 1px #17203338)}
+.pdfpro-section-dropdown.is-open .pdfpro-section-tool-option .pdfpro-tool-icon svg{animation:pdfpro-icon-pop .42s cubic-bezier(.2,.8,.2,1) both}
+.pdfpro-section-tool-option:hover .pdfpro-tool-icon svg,.pdfpro-section-tool-option:focus-visible .pdfpro-tool-icon svg{animation:pdfpro-icon-bounce .38s cubic-bezier(.2,.8,.2,1)}
 .pdfpro-section-tool-option:hover,.pdfpro-section-tool-option:focus-visible{transform:perspective(600px) translateY(-2px) scale(1.025) translateZ(8px);border-color:#cfc5fa;box-shadow:0 8px 16px #28204a20;color:#6b3fe0}
 .pdfpro-section-tool-option:active{transform:perspective(600px) scale(1.045) translateZ(16px);box-shadow:0 12px 22px #28204a2b}
 .pdfpro-section-tool-option .pdfpro-tool-icon{flex:0 0 1.8rem;width:1.8rem;height:1.8rem;margin:0}
@@ -133,9 +135,12 @@
 .pdfpro-section-menu-social-media .pdfpro-section-tool-option:nth-child(3n+2) .pdfpro-tool-icon{background:linear-gradient(135deg,#9debdc,#a8d8ff);color:#176c88}
 .pdfpro-section-menu-social-media .pdfpro-section-tool-option:nth-child(3n) .pdfpro-tool-icon{background:linear-gradient(135deg,#ffe697,#ffb6a9);color:#a4473d}
 .pdfpro-section-menu-social-media .pdfpro-section-tool-option:hover,.pdfpro-section-menu-social-media .pdfpro-section-tool-option:focus-visible{border-color:#b98ee6;background:#fff;box-shadow:0 8px 18px #6024a329;color:#6427aa}
+@media(hover:hover) and (min-width:992px){.pdfpro-section-category-card:hover{z-index:10;border-color:color-mix(in srgb,var(--card-ink),#fff 34%);box-shadow:0 28px 48px color-mix(in srgb,var(--card-ink),transparent 68%),inset 0 1px #fff;transform:perspective(1200px) translateY(-9px) rotateX(1deg) rotateY(-1deg) scale(1.06) translateZ(26px)}}
 @media(min-width:992px) and (max-width:1199.98px){.pdfpro-primary-nav .nav-link{padding-inline:.34rem}.pdfpro-section-menu .pdfpro-section-link{padding-inline:.3rem;font-size:.72rem}.pdfpro-tools-dropdown-toggle{width:1.45rem}}
 @keyframes pdfpro-section-dropdown-in{from{opacity:0;transform:translate(-50%,-10px) rotateX(-2deg)}to{opacity:1;transform:translate(-50%,0) rotateX(0)}}
 @keyframes pdfpro-section-card-in{from{opacity:0;transform:perspective(1000px) translateY(12px) rotateX(-4deg) scale(.97)}to{opacity:1;transform:perspective(1000px) translateY(0) rotateX(0) scale(1)}}
+@keyframes pdfpro-icon-pop{0%{opacity:0;transform:scale(.55) rotate(-18deg)}72%{opacity:1;transform:scale(1.16) rotate(4deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes pdfpro-icon-bounce{0%,100%{transform:translateY(0) rotate(0)}45%{transform:translateY(-3px) rotate(-7deg)}75%{transform:translateY(1px) rotate(3deg)}}
 @media(max-width:991.98px){
   .pdfpro-tool-section-nav{flex-direction:column;align-items:stretch;gap:0;width:100%;margin:.15rem 0;padding:.15rem 0 .15rem .45rem;border-left:2px solid #e5e7ed}
   .pdfpro-section-menu{position:relative;width:100%}
@@ -150,4 +155,4 @@
 }
 @media(max-width:575.98px){.pdfpro-section-categories-grid{grid-template-columns:minmax(0,1fr)}.pdfpro-section-dropdown{padding:.6rem}.pdfpro-section-category-card{padding:.7rem}.pdfpro-section-tool-option{min-height:2.8rem;font-size:.8rem}}
 @keyframes pdfpro-section-dropdown-mobile-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){.pdfpro-section-dropdown.is-open,.pdfpro-section-category-card,.pdfpro-section-tool-option{animation:none!important;transition:none!important}.pdfpro-section-category-card:hover,.pdfpro-section-tool-option:hover,.pdfpro-section-tool-option:active{transform:none}}
+@media(prefers-reduced-motion:reduce){.pdfpro-section-dropdown.is-open,.pdfpro-section-category-card,.pdfpro-section-tool-option,.pdfpro-section-tool-option .pdfpro-tool-icon svg{animation:none!important;transition:none!important}.pdfpro-section-category-card:hover,.pdfpro-section-category-card:focus-within,.pdfpro-section-tool-option:hover,.pdfpro-section-tool-option:active{transform:none}}
