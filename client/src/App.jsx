@@ -47,7 +47,10 @@ function SeoMetadata() {
     const toolSlug = path.match(/^\/tools\/([a-z0-9-]+)$/i)?.[1]?.toLowerCase();
     const tool = toolSlug ? toolCatalog.find((item) => item.slug === toolSlug) : null;
     const metadata = tool
-      ? { title: `${tool.name} Online | PDF Pro Cut`, description: tool.description }
+      ? {
+        title: `${tool.name}${tool.comingSoon ? ' Coming Soon' : ' Online'} | PDF Pro Cut`,
+        description: tool.comingSoon ? `${tool.name} is coming soon to PDF Pro Cut.` : tool.description
+      }
       : pageSeo[path] || homeSeo;
     const canonicalUrl = `https://pdfprocut.com${path}`;
     const robots = noIndexPaths.has(path) || path.startsWith('/admin') ? 'noindex,nofollow' : 'index,follow';

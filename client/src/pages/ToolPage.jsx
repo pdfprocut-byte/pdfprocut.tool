@@ -61,6 +61,11 @@ function ToolPageContent({ tool }) {
     if (Array.isArray(state.ocrLanguages) && state.ocrLanguages.length) setOcrLanguages(state.ocrLanguages);
   }, Boolean(tool && !isCustomTool));
   if (!tool) return <main className="container py-5">Tool not found.</main>;
+  if (tool.comingSoon) return <main className="container py-5 tool-page">
+    <Link to="/tools" className="back">All tools</Link>
+    <h2>{tool.name}</h2>
+    <p className="lead" role="status">Coming Soon</p>
+  </main>;
   let customToolPage = null;
   if (tool.endpoint === 'remove-pages') customToolPage = <RemovePagesPage tool={tool}/>;
   else if (tool.endpoint === 'add-watermark') customToolPage = <WatermarkPage tool={tool}/>;
