@@ -10,6 +10,7 @@ import { fetchWithCredentials, apiBaseUrl } from './lib/authApi.js';
 import { useAuth } from './context/AuthContext.jsx';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 import { homeSeo, pageSeo } from '../../shared/pageSeo.mjs';
+import './tool-hover.css';
 
 const Placeholder = ({ title }) => <main className="container py-5"><h2>{title}</h2><p>The page you requested could not be found.</p></main>;
 const ToolPage = lazy(() => import('./pages/ToolPage.jsx'));
