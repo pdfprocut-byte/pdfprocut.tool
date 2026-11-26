@@ -156,7 +156,7 @@ export default function CompressImagePage({ tool }) {
 
   const compress = async () => {
     if (!file) return toast.error('Select a JPG or PNG image first');
-    if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) return toast.error('Enter an exact output size between 1 KB and 25 MB');
+    if (!Number.isFinite(targetSizeMb) || targetSizeMb < 1 / 1024 || targetSizeMb > 25) return toast.error('Enter a maximum file size between 1 KB and 25 MB');
     const width = Number(dimensions.width);
     const height = Number(dimensions.height);
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width * height > 40_000_000) {
@@ -182,9 +182,7 @@ export default function CompressImagePage({ tool }) {
         outputSize: blob.size,
         outputWidth: Number(response.headers.get('X-Output-Width')) || width,
         outputHeight: Number(response.headers.get('X-Output-Height')) || height,
-        targetBytes: Number(response.headers.get('X-Target-Size')) || Math.round(targetSizeMb * 1024 * 1024),
         targetMet: response.headers.get('X-Target-Met') === 'true',
-        targetPadded: response.headers.get('X-Target-Padded') === 'true',
         quality
       });
       toast.success('Compressed image is ready');
@@ -200,9 +198,9 @@ export default function CompressImagePage({ tool }) {
   return <main className="container py-5 tool-page">
     <Link to="/tools" className="back">← All tools</Link>
     <h2>{tool.name}</h2>
-    <p className="lead">Resize a JPG or PNG image and create an output at the selected file size.</p>
+    <p className="lead">Resize a JPG or PNG image and keep it within a selected maximum file size.</p>
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    <div className="alert alert-info" role="note">The compressor preserves clarity first, then reduces dimensions and quality if needed. If the encoded image is smaller than your selected size, format-safe padding is added without changing its pixels. A PNG larger than the target may be saved as JPEG, so transparent areas become white.</div>
+    <div className="alert alert-info" role="note">The compressor chooses the clearest result it can fit under your maximum. If the image cannot fit without more quality loss, the tool reports that instead of enlarging the file. A PNG larger than the target may be saved as JPEG, so transparent areas become white.</div>
     <FileUploader tool={tool} onFiles={selectFile}/>
     {file && <UploadedFileList files={file}/>}
     {file && <section className="image-compress-dimensions" aria-labelledby="image-compress-dimensions-title">
@@ -217,19 +215,19 @@ export default function CompressImagePage({ tool }) {
       <label className="image-compress-aspect-toggle"><input type="checkbox" checked={maintainAspectRatio} onChange={(event) => toggleAspectRatio(event.target.checked)}/> Maintain aspect ratio</label>
       <small className="image-compress-dimension-hint">Maximum output dimensions: 40 megapixels total.</small>
     </section>}
-    <label className="mt-3">Exact output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
+    <label className="mt-3">Maximum output size<select className="form-select" value={targetChoice} onChange={(event) => setTargetChoice(event.target.value)}>
         {targetOptions.map(([value, label]) => <option value={value} key={value}>{label}</option>)}
       </select>
     </label>
     {targetChoice === 'custom' && <div className="image-compress-custom-target mt-3">
-      <label htmlFor="image-compress-target-value">Custom exact output size</label>
+      <label htmlFor="image-compress-target-value">Custom maximum size</label>
       <div className="input-group">
         <input id="image-compress-target-value" className="form-control" type="number" min={customTargetMin} max={customTargetMax} step="any" value={customTarget} onChange={(event) => setCustomTarget(event.target.value)}/>
         <select className="form-select" aria-label="Custom target unit" value={targetUnit} onChange={(event) => changeTargetUnit(event.target.value)}>
           <option value="KB">KB</option><option value="MB">MB</option>
         </select>
       </div>
-      <small>Enter an exact output size from 1 KB to 25 MB.</small>
+      <small>Enter a maximum from 1 KB to 25 MB.</small>
     </div>}
     <label className="mt-3">Image clarity<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
         <option value="clear">High clarity (recommended)</option>
@@ -244,11 +242,9 @@ export default function CompressImagePage({ tool }) {
     <DownloadResultModal href={result?.url} fileName={result?.name} toolSlug={tool.slug} title="PDF Pro Cut compressed your image" downloadLabel="Download compressed image" onClose={() => setResult(null)}>
       {result && <>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
-          {result.targetMet ? `Exact output size reached: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Could not reach the exact selected size of ${result.targetBytes.toLocaleString()} bytes. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
+          {result.targetMet ? `Maximum met: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).` : `Maximum not met. Best result: ${result.outputSize.toLocaleString()} bytes (${formatSize(result.outputSize)}).`}
           {' '}Original: {formatSize(result.originalSize)}. Output: {result.outputWidth} × {result.outputHeight} px.
         </p>
-        {result.targetPadded && <p className="small text-secondary">Small format metadata was added to reach the exact byte size; the visible image was not changed by that padding.</p>}
-        {result.outputSize >= result.originalSize && !result.targetPadded && !result.targetMet && <p className="small text-secondary">No smaller exact-size result could be produced. Try Balanced or Smallest.</p>}
       </>}
     </DownloadResultModal>
   </main>;

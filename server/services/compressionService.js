@@ -4,7 +4,6 @@ import { PDFDocument } from 'pdf-lib';
 import { unzipSync, zipSync } from 'fflate';
 import { extname } from 'node:path';
 import { ApiError } from '../utils/ApiError.js';
-import { padFileToExactSize } from '../../shared/fileSizePadding.mjs';
 
 const maxPages = 100;
 const maxPixelsPerPdfPage = 4_000_000;
@@ -242,12 +241,10 @@ export async function compressFile(file, targetSizeMb, quality = 'clear') {
   const result = extension === 'pdf'
     ? await compressPdf(file, targetBytes, quality)
     : await compressOfficeArchive(file, officeExtension(file), targetBytes, quality);
-  return withExactTarget(result, targetBytes);
-}
-
-function withExactTarget(result, targetBytes) {
-  const padded = padFileToExactSize(result.buffer, result.type, targetBytes);
-  return { ...result, buffer: Buffer.from(padded.bytes), targetMet: padded.exact, targetPadded: padded.padded };
+  if (result.buffer.length > targetBytes) {
+    throw new ApiError(422, 'Could not reduce this file below the selected maximum without more quality loss. Choose a larger maximum or a stronger compression setting.');
+  }
+  return result;
 }
 
 export async function compressImage(file, targetSizeMb, quality = 'clear', requestedDimensions = {}) {
@@ -271,7 +268,7 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
   const sourceType = file.mimetype;
   const type = sourceType === 'image/png' && file.buffer.length > targetBytes ? 'image/jpeg' : sourceType;
   if (!resized && file.buffer.length <= targetBytes) {
-    return withExactTarget({ buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height }, targetBytes);
+    return { buffer: file.buffer, type: sourceType, width: dimensions.width, height: dimensions.height };
   }
 
   let image;
@@ -340,5 +337,8 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
   }
   const buffer = bestFit || bestReduced || bestRequestedSize || file.buffer;
   const outputDimensions = bestFitDimensions || bestReducedDimensions || { width, height };
-  return withExactTarget({ buffer, type, width: outputDimensions.width, height: outputDimensions.height }, targetBytes);
+  if (buffer.length > targetBytes) {
+    throw new ApiError(422, 'Could not fit this image under the selected maximum at the chosen dimensions and clarity. Choose a larger maximum or reduce the output dimensions.');
+  }
+  return { buffer, type, width: outputDimensions.width, height: outputDimensions.height };
 }

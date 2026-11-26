@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
 import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
-import { padFileToExactSize } from '../../../shared/fileSizePadding.mjs';
 import '../styles/governmentImageTools.css';
 
 const maxPixels = 30_000_000;
@@ -51,18 +50,18 @@ async function addPhotoNameDateFooter(blob, name, dateValue, targetBytes = null)
     context.font = `700 ${Math.max(7, fontSize * 0.9)}px Arial, sans-serif`;
     context.fillText(formatPhotoDate(dateValue), bitmap.width / 2, imageAreaHeight + footerHeight * 0.75, Math.max(1, bitmap.width - 6));
     const type = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
-    const qualities = targetBytes && type === 'image/jpeg' ? [0.94, 0.84, 0.74, 0.64, 0.54, 0.44, 0.34] : [0.92];
+    const qualities = targetBytes && type === 'image/jpeg' ? [0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82] : [0.92];
     let outputBlob = null;
     let targetMet = !targetBytes;
     for (const quality of qualities) {
       const candidate = await canvasBlob(canvas, type, quality);
-      if (!outputBlob || candidate.size < outputBlob.size) outputBlob = candidate;
       if (!targetBytes || candidate.size <= targetBytes) {
         outputBlob = candidate;
         targetMet = true;
         break;
       }
     }
+    if (!targetMet) throw new Error('Could not fit the photo and name/date footer under the selected maximum without more clarity loss. Choose a larger maximum or smaller official dimensions.');
     return { blob: outputBlob, width: bitmap.width, height: outputHeight, targetMet };
   } finally {
     bitmap.close();
@@ -235,47 +234,50 @@ async function prepareImage(file, options) {
     }
 
     const format = options.format === 'png' ? 'image/png' : 'image/jpeg';
+    if (!needsPixelProcessing && !options.whiteBackground && file.type === format && bitmap.width === requestedWidth && bitmap.height === requestedHeight) {
+      let passthrough = file;
+      if (options.dpi) passthrough = format === 'image/png' ? await addPngDpi(passthrough, options.dpi) : await addJpegDpi(passthrough, options.dpi);
+      if (!options.targetBytes || passthrough.size <= options.targetBytes) {
+        return { blob: passthrough, width: requestedWidth, height: requestedHeight, targetMet: true, originalWidth: bitmap.width, originalHeight: bitmap.height };
+      }
+    }
     const canvas = document.createElement('canvas');
     let best = null;
     let bestWidth = requestedWidth;
     let bestHeight = requestedHeight;
     let targetMet = !options.targetBytes;
     try {
-      for (let scaleStep = 0; scaleStep <= (options.targetBytes ? 14 : 0); scaleStep += 1) {
-        const scale = 0.88 ** scaleStep;
-        const width = Math.max(1, Math.round(requestedWidth * scale));
-        const height = Math.max(1, Math.round(requestedHeight * scale));
-        canvas.width = width; canvas.height = height;
-        const context = canvas.getContext('2d');
-        if (!context) throw new Error('Your browser could not prepare the output image.');
-        if (options.whiteBackground || format === 'image/jpeg') {
-          context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
+      const width = requestedWidth;
+      const height = requestedHeight;
+      canvas.width = width; canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Your browser could not prepare the output image.');
+      if (options.whiteBackground || format === 'image/jpeg') {
+        context.fillStyle = '#ffffff'; context.fillRect(0, 0, width, height);
+      }
+      if (options.fitMode === 'contain') {
+        const scale = Math.min(width / crop.width, height / crop.height);
+        const drawWidth = crop.width * scale;
+        const drawHeight = crop.height * scale;
+        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+      } else {
+        context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
+      }
+      const qualitySteps = options.targetBytes && format === 'image/jpeg'
+        ? [0.98, 0.96, 0.94, 0.92, 0.9, 0.88, 0.86, 0.84, 0.82]
+        : [0.92];
+      for (const quality of qualitySteps) {
+        let candidate = await canvasBlob(canvas, format, quality);
+        if (options.dpi) candidate = format === 'image/png' ? await addPngDpi(candidate, options.dpi) : await addJpegDpi(candidate, options.dpi);
+        if (!options.targetBytes || candidate.size <= options.targetBytes) {
+          best = candidate; bestWidth = width; bestHeight = height; targetMet = true; break;
         }
-        if (options.fitMode === 'contain') {
-          const scale = Math.min(width / crop.width, height / crop.height);
-          const drawWidth = crop.width * scale;
-          const drawHeight = crop.height * scale;
-          context.drawImage(source, crop.x, crop.y, crop.width, crop.height, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
-        } else {
-          context.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, width, height);
-        }
-        const qualitySteps = options.targetBytes && format === 'image/jpeg'
-          ? scaleStep === 0 ? [0.94, 0.76, 0.56] : [Math.max(0.32, 0.56 - (scaleStep - 1) * 0.035)]
-          : [0.92];
-        for (const quality of qualitySteps) {
-          const candidate = await canvasBlob(canvas, format, quality);
-          if (!best || candidate.size < best.size) { best = candidate; bestWidth = width; bestHeight = height; }
-          if (!options.targetBytes || candidate.size <= options.targetBytes) {
-            best = candidate; bestWidth = width; bestHeight = height; targetMet = true; break;
-          }
-        }
-        if (targetMet) break;
       }
     } finally {
       canvas.width = 0; canvas.height = 0;
     }
 
-    if (options.dpi) best = format === 'image/png' ? await addPngDpi(best, options.dpi) : await addJpegDpi(best, options.dpi);
+    if (!best) throw new Error('Could not fit this image under the selected maximum without reducing its dimensions or clarity further. Choose a larger maximum or dimensions allowed by the current notice.');
     return { blob: best, width: bestWidth, height: bestHeight, targetMet, originalWidth: bitmap.width, originalHeight: bitmap.height };
   } finally {
     bitmap.close();
@@ -516,15 +518,6 @@ export default function GovernmentImageToolPage({ tool }) {
           output = { ...output, ...labeledOutput };
         }
         const targetBytes = hasSizeTarget && targetKb ? Math.round(requestedKb * 1024) : null;
-        if (targetBytes) {
-          const padded = padFileToExactSize(new Uint8Array(await output.blob.arrayBuffer()), output.blob.type, targetBytes);
-          output = {
-            ...output,
-            blob: new Blob([padded.bytes], { type: output.blob.type }),
-            targetMet: padded.exact,
-            targetPadded: padded.padded
-          };
-        }
         const extension = output.blob.type === 'image/png' ? 'png' : 'jpg';
         const baseName = files[slot.key].name.replace(/\.[^.]+$/, '') || 'image';
         nextResults.push({
@@ -537,7 +530,6 @@ export default function GovernmentImageToolPage({ tool }) {
           originalSize: files[slot.key].size,
           targetMet: output.targetMet,
           targetBytes,
-          targetPadded: Boolean(output.targetPadded),
           minimumSizeMet: !slotPreset?.minKb || output.blob.size >= slotPreset.minKb * 1024
         });
       }
@@ -627,7 +619,7 @@ export default function GovernmentImageToolPage({ tool }) {
         <label className="government-inline-field">Background color tolerance: {backgroundTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={backgroundTolerance} onChange={(event) => setBackgroundTolerance(event.target.value)}/></label>
       </>}
       {(config.crop || pair) && <label className="government-setting-check"><input type="checkbox" checked={trim} onChange={(event) => setTrim(event.target.checked)}/> Trim blank borders around the signature</label>}
-      {showSizeTarget && <label className="government-inline-field">Exact output size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter an exact output size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}The downloaded file is set to this exact byte size when the image format allows safe padding; otherwise its actual size is shown.</small></label>}
+      {showSizeTarget && <label className="government-inline-field">Maximum file size (KB)<input className="form-control" type="number" min={currentPreset?.minKb || 1} max={currentPreset?.maxKb || 15360} step="1" placeholder="Enter a maximum file size" value={targetKb} onChange={(event) => setTargetKb(event.target.value)}/><small>{currentPreset?.minKb ? `The source notice also requires at least ${currentPreset.minKb} KB. ` : ''}The output stays at or below this limit. Image clarity and selected dimensions are preserved as much as the size limit allows.</small></label>}
       {dpiMode && <label className="government-inline-field">Resolution metadata (DPI)<input className="form-control" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/><small>DPI changes print-size metadata; it does not add detail or increase the pixel dimensions.</small></label>}
       {removeBackground && <label className="government-inline-field">White-background removal threshold: {backgroundThreshold}<input className="form-range" type="range" min="205" max="252" step="1" value={backgroundThreshold} onChange={(event) => setBackgroundThreshold(event.target.value)}/><small>Works best with a plain, near-white background. Inspect fine signature strokes before using the PNG.</small></label>}
       {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialMediaTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
@@ -639,8 +631,7 @@ export default function GovernmentImageToolPage({ tool }) {
       <div className="government-results-grid">{results.map((result) => <article className="government-result-card" key={result.name}>
         <img className={socialProfileTool ? 'social-profile-result-image' : undefined} src={result.url} alt={`Processed ${result.name} preview`}/>
         <p>{result.width} × {result.height} px · {result.blob.size.toLocaleString()} bytes ({(result.blob.size / 1024).toFixed(1)} KB)</p>
-        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Could not reach the exact ${result.targetBytes.toLocaleString()}-byte target; actual size is ${result.blob.size.toLocaleString()} bytes.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : 'Exact file-size target reached.'}</p>}
-        {showSizeTarget && result.targetPadded && <p className="small text-secondary">Safe image metadata padding reached the selected byte size without changing the visible image.</p>}
+        {showSizeTarget && <p className={result.targetMet && result.minimumSizeMet ? 'text-success' : 'text-warning'}>{!result.targetMet ? `Maximum size not reached; actual size is ${result.blob.size.toLocaleString()} bytes. Increase the allowed maximum or use dimensions accepted by the current notice.` : !result.minimumSizeMet ? `Below the ${currentPreset?.minKb} KB minimum; check the source notice.` : `Maximum size met: ${result.blob.size.toLocaleString()} bytes.`}</p>}
         <ProtectedDownload className="btn btn-primary" href={result.url} download={result.name}>Download {pair ? result.slotLabel.toLowerCase() : 'image'}</ProtectedDownload>
       </article>)}</div>
     </section>}
