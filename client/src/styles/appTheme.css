@@ -999,3 +999,83 @@ html, body, #root { min-height: 100%; }
   .pdfpro-user-greeting,
   .pdfpro-logout-button { transition: none !important; transform: none !important; }
 }
+
+.pdfpro-navbar .pdfpro-navbar-toggler {
+  display: grid;
+  width: 54px;
+  height: 46px;
+  place-items: center;
+  padding: .5rem .7rem;
+  border: 2px solid transparent !important;
+  border-radius: 14px;
+  background: linear-gradient(#fff, #fff) padding-box, linear-gradient(120deg, #7544d5, #3388e5, #e64bb4, #ffa63d, #7544d5) border-box !important;
+  background-size: 100% 100%, 280% 280% !important;
+  background-position: center, 0% 50%;
+  box-shadow: 0 4px 0 #c6b4e5, 0 8px 16px #5b388b24, inset 0 1px #ffffffd9;
+  transition: transform .24s cubic-bezier(.2,.8,.2,1), box-shadow .24s ease, filter .24s ease !important;
+  animation: pdfpro-toggler-border-flow 4s linear infinite;
+}
+
+.pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon {
+  position: relative;
+  width: 1.45rem;
+  height: 2px;
+  border-radius: 999px;
+  background-image: linear-gradient(90deg, #6537ce, #3286e5, #df43a6, #6537ce);
+  background-size: 220% 100%;
+  background-position: 0% 50%;
+  animation: pdfpro-toggler-lines-flow 2.8s linear infinite;
+}
+
+.pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::before,
+.pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::after {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: inherit;
+  background-image: inherit;
+  background-size: inherit;
+  background-position: inherit;
+  animation: pdfpro-toggler-lines-flow 2.8s linear infinite;
+  content: '';
+  transition: top .22s ease, transform .22s ease, opacity .16s ease;
+}
+
+.pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::before { top: -7px; }
+.pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::after { top: 7px; }
+.pdfpro-navbar .pdfpro-navbar-toggler[aria-expanded="true"] .navbar-toggler-icon { background-image: none; }
+.pdfpro-navbar .pdfpro-navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::before { top: 0; transform: rotate(45deg); }
+.pdfpro-navbar .pdfpro-navbar-toggler[aria-expanded="true"] .navbar-toggler-icon::after { top: 0; transform: rotate(-45deg); }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .pdfpro-navbar .pdfpro-navbar-toggler:hover,
+  .pdfpro-navbar .pdfpro-navbar-toggler:focus-visible {
+    filter: saturate(1.18);
+    box-shadow: 0 6px 0 #bca7e3, 0 12px 20px #5b388b2e, inset 0 1px #fff;
+    transform: perspective(500px) translateY(-2px) rotateX(5deg);
+  }
+}
+
+.pdfpro-navbar .pdfpro-navbar-toggler:active {
+  box-shadow: 0 1px 0 #9c85cc, inset 0 2px 5px #35234a24;
+  transform: translateY(2px);
+}
+
+@keyframes pdfpro-toggler-border-flow {
+  from { background-position: center, 0% 50%; }
+  to { background-position: center, 100% 50%; }
+}
+
+@keyframes pdfpro-toggler-lines-flow {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdfpro-navbar .pdfpro-navbar-toggler,
+  .pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon { animation: none; }
+  .pdfpro-navbar .pdfpro-navbar-toggler,
+  .pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::before,
+  .pdfpro-navbar .pdfpro-navbar-toggler .navbar-toggler-icon::after { transition: none !important; }
+}
