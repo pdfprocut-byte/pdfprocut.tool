@@ -112,7 +112,7 @@
 .pdfpro-section-dropdown.is-open .pdfpro-section-category-card{animation:pdfpro-section-card-in .4s cubic-bezier(.2,.8,.2,1) backwards}
 .pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(2){animation-delay:.045s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(3){animation-delay:.09s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(4){animation-delay:.135s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(5){animation-delay:.18s}.pdfpro-section-dropdown.is-open .pdfpro-section-category-card:nth-child(6){animation-delay:.225s}
 .pdfpro-section-tool-list{display:grid;grid-template-columns:1fr;align-content:start;gap:.5rem}
-.pdfpro-section-tool-option{display:flex;align-items:center;gap:.55rem;min-width:0;min-height:2.65rem;padding:.4rem .45rem;border:1px solid #ffffffd1;border-radius:10px;background:linear-gradient(150deg,#ffffff,#fbfaff);box-shadow:0 3px 8px #19213a12,inset 0 1px #fff;color:#343b4c;font-size:.75rem;font-weight:650;line-height:1.3;text-align:left;text-decoration:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .18s ease}
+.pdfpro-section-tool-option{display:flex;align-items:center;gap:.65rem;min-width:0;min-height:3.1rem;padding:.48rem .62rem;border:1px solid #ffffff;border-radius:13px;background:linear-gradient(145deg,#fff 0%,#fafbff 100%);box-shadow:0 4px 12px #19213a16,inset 0 1px #fff;color:#30384b;font-size:.78rem;font-weight:680;line-height:1.35;text-align:left;text-decoration:none;transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,border-color .18s ease,background .18s ease}
 .pdfpro-section-tool-option>span:last-child{min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
 .pdfpro-section-tool-option .pdfpro-tool-icon{border:1px solid #ffffffd9;border-radius:9px;background:linear-gradient(140deg,var(--card-start),var(--card-end));box-shadow:0 4px 9px color-mix(in srgb,var(--card-ink),transparent 82%),inset 0 1px #ffffffde;color:var(--card-ink)}
 .pdfpro-section-tool-option .pdfpro-tool-icon svg{filter:drop-shadow(0 1px 1px #17203338)}
@@ -120,7 +120,7 @@
 .pdfpro-section-tool-option:hover .pdfpro-tool-icon svg,.pdfpro-section-tool-option:focus-visible .pdfpro-tool-icon svg{animation:pdfpro-icon-bounce .38s cubic-bezier(.2,.8,.2,1)}
 .pdfpro-section-tool-option:hover,.pdfpro-section-tool-option:focus-visible{transform:perspective(600px) translateY(-2px) scale(1.025) translateZ(8px);border-color:#cfc5fa;box-shadow:0 8px 16px #28204a20;color:#6b3fe0}
 .pdfpro-section-tool-option:active{transform:perspective(600px) scale(1.045) translateZ(16px);box-shadow:0 12px 22px #28204a2b}
-.pdfpro-section-tool-option .pdfpro-tool-icon{flex:0 0 1.8rem;width:1.8rem;height:1.8rem;margin:0}
+.pdfpro-section-tool-option .pdfpro-tool-icon{flex:0 0 2rem;width:2rem;height:2rem;margin:0}
 .pdfpro-section-menu-social-media .pdfpro-section-dropdown{border-color:#d8b7f1;background:radial-gradient(ellipse at 8% 0%,#fff4b8 0,transparent 35%),radial-gradient(ellipse at 95% 15%,#ffcde4 0,transparent 38%),linear-gradient(135deg,#f4e8ff 0%,#e5f5ff 52%,#e3fff2 100%);box-shadow:0 22px 55px #7929b333}
 .pdfpro-section-menu-social-media .pdfpro-section-dropdown-heading{border-bottom-color:#dfc9ef}
 .pdfpro-section-menu-social-media .pdfpro-section-dropdown-heading h2{color:#6924a9}
