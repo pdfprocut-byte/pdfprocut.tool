@@ -1,9 +1,11 @@
 export const MIN_IMAGE_QUALITY = 55;
 export const MAX_IMAGE_QUALITY = 100;
 export const MIN_DIMENSION_SCALE = 0.1;
+const minimumTargetGapBytes = Math.ceil(0.1 * 1024);
+const maximumTargetGapBytes = 512;
 
 export function getImageTargetToleranceBytes(targetBytes) {
-  return Math.min(1024, Math.ceil(targetBytes * 0.05));
+  return Math.min(maximumTargetGapBytes, Math.max(0, targetBytes - 1));
 }
 
 function candidateSize(candidate) {
@@ -14,19 +16,24 @@ function candidateSize(candidate) {
 
 function chooseCandidate(candidates, mode, targetBytes) {
   const underLimit = candidates.filter((candidate) => candidate.bytes <= targetBytes);
+  if (!underLimit.length) return null;
   if (mode === 'maximum') {
     return underLimit.sort((a, b) => b.quality - a.quality || b.scale - a.scale || b.bytes - a.bytes)[0] || null;
   }
-  const pool = underLimit.length ? underLimit : candidates;
-  return pool.sort((a, b) => Math.abs(targetBytes - a.bytes) - Math.abs(targetBytes - b.bytes)
+  const preferredBand = underLimit.filter((candidate) => {
+    const gap = targetBytes - candidate.bytes;
+    return gap >= minimumTargetGapBytes && gap <= maximumTargetGapBytes;
+  });
+  const targetCandidates = preferredBand.length ? preferredBand : underLimit;
+  return targetCandidates.sort((a, b) => Math.abs(targetBytes - a.bytes) - Math.abs(targetBytes - b.bytes)
     || b.scale - a.scale || b.quality - a.quality)[0] || null;
 }
 
 /**
  * Searches real encoded candidates. Maximum mode returns the highest quality
  * candidate at or below the cap. Target mode prefers the closest candidate
- * that does not exceed the target; its accepted band is within 5% (capped at
- * 1 KB) below the requested size. It never fabricates bytes.
+ * that does not exceed the target; its accepted band is within 0.5 KB below
+ * the requested size. It never fabricates bytes.
  */
 export async function findImageEncoding({
   width,
@@ -113,9 +120,7 @@ export async function findImageEncoding({
     : candidate.bytes <= targetBytes && candidate.bytes >= targetBytes - toleranceBytes;
   let warning = '';
   if (mode === 'target' && !targetMet) {
-    warning = candidate.bytes > targetBytes
-      ? `The requested ${targetBytes.toLocaleString()} byte target could not be reached at acceptable quality. The closest encoded result is ${candidate.bytes.toLocaleString()} bytes, above the target. ${allowDimensionAdjustment ? 'Increase the target or change the output dimensions.' : 'Increase the target or enable automatic dimension adjustment.'}`
-      : `This image naturally encodes to ${candidate.bytes.toLocaleString()} bytes at the selected dimensions. The requested target is ${targetBytes.toLocaleString()} bytes; no filler data was added.`;
+    warning = `The closest encoded result is ${candidate.bytes.toLocaleString()} bytes, outside the 0.5 KB target range around the requested ${targetBytes.toLocaleString()} bytes. No filler data was added.`;
   }
   return {
     ...candidate,

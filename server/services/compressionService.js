@@ -369,9 +369,14 @@ export async function compressImage(file, targetSizeMb, quality = 'clear', reque
         }
       }
     });
-    if (!encoded) throw new ApiError(422, requestedDimensions.allowDimensionAdjustment
-      ? 'Could not fit this image under the selected maximum at acceptable quality. Increase the maximum or choose smaller output dimensions.'
-      : 'Could not fit this image under the selected maximum at acceptable quality. Increase the maximum or enable automatic dimension adjustment.');
+    if (!encoded) {
+      if (mode === 'target') throw new ApiError(422, requestedDimensions.allowDimensionAdjustment
+        ? `Could not reach the ${targetBytes.toLocaleString()} byte target without exceeding it at acceptable quality. Increase the target or choose smaller output dimensions.`
+        : `Could not reach the ${targetBytes.toLocaleString()} byte target without exceeding it at acceptable quality. Increase the target or enable automatic dimension adjustment.`);
+      throw new ApiError(422, requestedDimensions.allowDimensionAdjustment
+        ? 'Could not fit this image under the selected maximum at acceptable quality. Increase the maximum or choose smaller output dimensions.'
+        : 'Could not fit this image under the selected maximum at acceptable quality. Increase the maximum or enable automatic dimension adjustment.');
+    }
     return {
       buffer: encoded.buffer,
       type,

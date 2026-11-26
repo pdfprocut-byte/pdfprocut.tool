@@ -53,6 +53,10 @@ for (const targetKb of [30, 50, 100]) {
     assert.ok(result.quality >= 55 && result.quality <= 100);
     assert.ok(Math.abs(result.width / result.height - 768 / 512) < 0.01);
     assert.equal(result.buffer.length, result.differenceBytes + targetBytes);
+    if (targetKb === 30) {
+      assert.equal(result.dimensionAdjusted, true);
+      assert.ok(targetBytes - result.buffer.length >= Math.ceil(0.1 * 1024));
+    }
   });
 }
 
@@ -84,16 +88,11 @@ test('Target KB mode warns when a small image naturally cannot reach the request
   assert.match(result.warning, /no filler data was added/i);
 });
 
-test('Target KB mode warns when acceptable JPEG quality cannot get below the requested size', async () => {
+test('Target KB mode never returns an image above the requested maximum', async () => {
   const targetKb = 1;
-  const result = await compressImage(createNoisePng(64, 64, 71), targetKb / 1024, 'clear', {
+  await assert.rejects(compressImage(createNoisePng(64, 64, 71), targetKb / 1024, 'clear', {
     mode: 'target', width: 64, height: 64
-  });
-
-  assert.equal(result.targetMet, false);
-  assert.equal(result.dimensionAdjusted, false);
-  assert.ok(result.buffer.length > targetKb * 1024);
-  assert.match(result.warning, /above the target/i);
+  }), /without exceeding it at acceptable quality/i);
 });
 
 test('very small source images keep their dimensions and are not enlarged with filler data', async () => {

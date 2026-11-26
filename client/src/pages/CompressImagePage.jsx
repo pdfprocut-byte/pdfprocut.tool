@@ -213,7 +213,7 @@ export default function CompressImagePage({ tool }) {
     <h2>{tool.name}</h2>
     <p className="lead">Resize a JPG, PNG, or WebP image to fit a strict maximum or aim for a requested file size.</p>
     {draftStatus && <p className={`small ${draftStatus === 'Autosave unavailable' ? 'text-warning' : 'text-success'}`} role="status">{draftStatus}</p>}
-    <div className="alert alert-info" role="note">Maximum KB keeps the clearest result at or below the size limit. Target KB searches actual JPEG encodings for a result within 5% (capped at 1 KB) below the requested size. If a small or simple image naturally encodes below that range, it stays at high quality and the tool reports that the target was not reached. It never adds filler bytes. A PNG may be saved as JPEG, so transparent areas become white.</div>
+    <div className="alert alert-info" role="note">Maximum KB keeps the clearest result at or below the size limit. Target KB searches actual JPEG encodings and prefers a result 0.1–0.5 KB below your target; if that range is not achievable, it uses the closest result below the limit. It only reduces dimensions if quality adjustment cannot get close, and keeps the aspect ratio. Small images stay at high quality and report when the target cannot be reached. It never adds filler bytes. A PNG may be saved as JPEG, so transparent areas become white.</div>
     <FileUploader tool={tool} onFiles={selectFile}/>
     {file && <UploadedFileList files={file}/>}
     {file && <section className="image-compress-dimensions" aria-labelledby="image-compress-dimensions-title">
@@ -242,12 +242,12 @@ export default function CompressImagePage({ tool }) {
       </div>
       <small>Enter a size from 1 KB to 25 MB.</small>
     </div>}
-    <label className="mt-3">Compression mode<select className="form-select" value={compressionMode} onChange={(event) => setCompressionMode(event.target.value)}>
+    <label className="mt-3">Compression mode<select className="form-select" value={compressionMode} onChange={(event) => { setCompressionMode(event.target.value); if (event.target.value === 'target') { setAllowDimensionAdjustment(true); changeTargetUnit('KB'); } }}>
       <option value="maximum">Maximum KB Mode</option>
       <option value="target">Target KB Mode</option>
-    </select><small>{compressionMode === 'maximum' ? 'The output will not exceed the requested size.' : 'The tool aims for the selected size without adding metadata or padding.'}</small></label>
+    </select><small>{compressionMode === 'maximum' ? 'The output will not exceed the requested size.' : 'The tool prefers a result 0.1–0.5 KB below your target, without adding metadata or padding.'}</small></label>
     <label className="image-compress-aspect-toggle mt-3"><input type="checkbox" checked={allowDimensionAdjustment} onChange={(event) => setAllowDimensionAdjustment(event.target.checked)}/> Automatically reduce dimensions if needed to reach the size</label>
-    <small className="image-compress-dimension-hint">Off by default: output dimensions remain as selected. Automatic reduction preserves the aspect ratio.</small>
+    <small className="image-compress-dimension-hint">{allowDimensionAdjustment ? 'Enabled: dimensions are reduced only when quality adjustment cannot get close, with the aspect ratio preserved.' : 'Disabled: output dimensions remain as selected. Turn this on to allow aspect-preserving reduction.'}</small>
     <label className="mt-3">Image clarity<select className="form-select" value={quality} onChange={(event) => setQuality(event.target.value)}>
         <option value="clear">High clarity (recommended)</option>
         <option value="balanced">Balanced</option>
@@ -260,6 +260,7 @@ export default function CompressImagePage({ tool }) {
     <OperationProgressModal show={busy} title="PDF Pro Cut is compressing your image" description="Please wait while the image size is reduced."/>
     <DownloadResultModal href={result?.url} fileName={result?.name} toolSlug={tool.slug} title="PDF Pro Cut compressed your image" downloadLabel="Download compressed image" onClose={() => setResult(null)}>
       {result && <>
+        <img className="image-compress-result-preview" src={result.url} alt={`Compressed image preview: ${result.outputWidth} by ${result.outputHeight} pixels`}/>
         <p className={result.targetMet ? 'text-success' : 'text-warning'}>
           Requested: {(result.targetBytes / 1024).toFixed(1)} KB; actual: {(result.outputSize / 1024).toFixed(1)} KB ({result.outputSize.toLocaleString()} bytes); difference: {result.targetDifference > 0 ? '+' : ''}{(result.targetDifference / 1024).toFixed(1)} KB.
           {' '}Mode: {result.compressionMode === 'maximum' ? 'Maximum KB' : 'Target KB'}; image quality: {result.outputQuality == null ? 'original encoding preserved' : `${result.outputQuality}%`}; {result.targetMet ? 'target achieved' : 'target not achieved'}.
