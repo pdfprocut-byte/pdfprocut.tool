@@ -685,24 +685,10 @@ export default function GovernmentImageToolPage({ tool }) {
       {!socialMediaTool && basePreset && <p className="government-preset-meta">{basePreset.recruitmentName || basePreset.label}{basePreset.postName ? ` · ${basePreset.postName}` : ''}{basePreset.notificationYear ? ` · ${basePreset.notificationYear}` : ''}{basePreset.width && basePreset.height ? ` · ${basePreset.width} × ${basePreset.height} px` : ''}{basePreset.minKb || basePreset.maxKb ? ` · ${basePreset.minKb ? `${basePreset.minKb}–` : 'up to '}${basePreset.maxKb || ''} KB` : ''}{basePreset.format ? ` · ${basePreset.format.toUpperCase()}` : ''}{basePreset.dpi ? ` · ${basePreset.dpi} DPI` : ''}{basePreset.validThrough ? ` · valid through ${basePreset.validThrough}` : ''}</p>}
       <p className="government-tool-privacy-note">Your image stays in this browser. Preset sizes, dimensions, frame handling, and output format can be changed before download.</p>
     </div>
-    {!socialMediaTool && <label className="government-inline-field government-preset-selector">Preset source<select className="form-select" value={presetMode} onChange={(event) => changePresetMode(event.target.value)}>
-      {['custom', 'custom-required'].includes(basePreset?.status)
-        ? <option value="custom">Enter settings from the current notice</option>
-        : <><option value={basePreset?.status === 'verified' ? 'verified' : 'example'}>{presetExpired ? 'Expired official notice (historical settings)' : basePreset?.status === 'verified' ? 'Verified official settings' : 'Default example settings'}</option><option value="custom">Custom settings from the current notice</option></>}
-    </select><small>Confirm the notice number, date, dimensions, format, size limits, and DPI with the recruiting authority before using an official preset.</small></label>}
-    {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
-
-    {socialMediaTool && <section className="government-tool-settings social-profile-settings" aria-labelledby="social-media-preset-title">
-      <h2 id="social-media-preset-title">{socialProfileTool ? 'Profile photo size' : 'Default image size'}</h2>
-      <label className="government-inline-field">{socialProfileTool ? 'Social platform' : 'Image preset'}<select className="form-select" value={socialPresetId} onChange={(event) => changeSocialPreset(event.target.value)}>
-        {socialPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} — {preset.width} × {preset.height} px</option>)}
-      </select></label>
-      <p className="small text-secondary mb-0">{selectedSocialPreset.shape} · {selectedSocialPreset.width} × {selectedSocialPreset.height} px · {selectedSocialPreset.aspectLabel || '1:1 aspect ratio'}</p>
-    </section>}
-
+    <div className="government-tool-workspace">
+      <div className="government-tool-visual-column">
     <div className="government-tool-inputs">
       {slots.map((slot) => {
-        const size = dimensions[slot.key];
         return <section className="government-tool-slot" key={slot.key} aria-labelledby={`${slot.key}-title`}>
           <h2 id={`${slot.key}-title`}>{slot.label}</h2>
           <label className="government-file-label">Select {slot.label.toLowerCase()} (JPG, PNG, or WebP)
@@ -713,16 +699,8 @@ export default function GovernmentImageToolPage({ tool }) {
               <img src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>
               <div className="government-photo-name-date-strip"><strong>{photoName.trim().toLocaleUpperCase() || 'YOUR NAME'}</strong><span>{formatPhotoDate(photoDate) || 'DD/MM/YYYY'}</span></div>
             </div> : <img className={socialProfileTool ? 'social-profile-preview-image' : undefined} src={previews[slot.key]} alt={`Selected ${slot.label.toLowerCase()} preview for ${tool.name}`}/>}
-            <figcaption>{files[slot.key]?.name} · {size?.originalWidth} × {size?.originalHeight} px</figcaption>
+            <figcaption>{files[slot.key]?.name} · {dimensions[slot.key]?.originalWidth} × {dimensions[slot.key]?.originalHeight} px</figcaption>
           </figure>}
-          {size && <fieldset className="government-dimensions">
-            <legend>Output dimensions</legend>
-            <div className="government-dimension-fields">
-              <label>Width (px)<input className="form-control" type="number" min="1" max="30000" value={size.width} placeholder={String(size.originalWidth || 'Original')} onChange={(event) => updateDimension(slot.key, 'width', event.target.value)}/></label>
-              <label>Height (px)<input className="form-control" type="number" min="1" max="30000" value={size.height} placeholder={String(size.originalHeight || 'Original')} onChange={(event) => updateDimension(slot.key, 'height', event.target.value)}/></label>
-            </div>
-            <small>{size.width && size.height ? `${size.width} × ${size.height} px is loaded from the selected preset. Edit either value to customize it.` : 'The source dimensions are kept until you enter a custom size.'} Maximum output: 30 megapixels.</small>
-          </fieldset>}
         </section>;
       })}
     </div>
@@ -735,6 +713,35 @@ export default function GovernmentImageToolPage({ tool }) {
       </>}
       {cameraError && <p className="text-danger" role="alert">{cameraError}</p>}
       <p className="small text-secondary">Camera access requires your browser's permission and a secure page connection.</p>
+    </section>}
+      </div>
+
+      <div className="government-tool-control-column">
+    {!socialMediaTool && <label className="government-inline-field government-preset-selector">Preset source<select className="form-select" value={presetMode} onChange={(event) => changePresetMode(event.target.value)}>
+      {['custom', 'custom-required'].includes(basePreset?.status)
+        ? <option value="custom">Enter settings from the current notice</option>
+        : <><option value={basePreset?.status === 'verified' ? 'verified' : 'example'}>{presetExpired ? 'Expired official notice (historical settings)' : basePreset?.status === 'verified' ? 'Verified official settings' : 'Default example settings'}</option><option value="custom">Custom settings from the current notice</option></>}
+    </select><small>Confirm the notice number, date, dimensions, format, size limits, and DPI with the recruiting authority before using an official preset.</small></label>}
+    {(removeBackground || replaceBackground || config.crop) && <p className="small text-secondary">Background editing and automatic signature trimming support source images up to 12 megapixels. Resize a copy first if your image is larger.</p>}
+    {socialMediaTool && <section className="government-tool-settings social-profile-settings" aria-labelledby="social-media-preset-title">
+      <h2 id="social-media-preset-title">{socialProfileTool ? 'Profile photo size' : 'Default image size'}</h2>
+      <label className="government-inline-field">{socialProfileTool ? 'Social platform' : 'Image preset'}<select className="form-select" value={socialPresetId} onChange={(event) => changeSocialPreset(event.target.value)}>
+        {socialPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.label} — {preset.width} × {preset.height} px</option>)}
+      </select></label>
+      <p className="small text-secondary mb-0">{selectedSocialPreset.shape} · {selectedSocialPreset.width} × {selectedSocialPreset.height} px · {selectedSocialPreset.aspectLabel || '1:1 aspect ratio'}</p>
+    </section>}
+    {slots.some(({ key }) => dimensions[key]) && <section className="government-dimension-settings" aria-label="Output dimensions">
+      {slots.map((slot) => {
+        const size = dimensions[slot.key];
+        return size && <fieldset className="government-dimensions" key={slot.key}>
+          <legend>{slots.length > 1 ? `${slot.label} output dimensions` : 'Output dimensions'}</legend>
+          <div className="government-dimension-fields">
+            <label>Width (px)<input className="form-control" type="number" min="1" max="30000" value={size.width} placeholder={String(size.originalWidth || 'Original')} onChange={(event) => updateDimension(slot.key, 'width', event.target.value)}/></label>
+            <label>Height (px)<input className="form-control" type="number" min="1" max="30000" value={size.height} placeholder={String(size.originalHeight || 'Original')} onChange={(event) => updateDimension(slot.key, 'height', event.target.value)}/></label>
+          </div>
+          <small>{size.width && size.height ? `${size.width} × ${size.height} px is loaded from the selected preset. Edit either value to customize it.` : 'The source dimensions are kept until you enter a custom size.'} Maximum output: 30 megapixels.</small>
+        </fieldset>;
+      })}
     </section>}
 
     <section className="government-tool-settings" aria-labelledby="government-settings-title">
@@ -779,6 +786,8 @@ export default function GovernmentImageToolPage({ tool }) {
 
     <button className="btn btn-primary mt-4" type="button" onClick={process} disabled={busy || slots.some(({ key }) => !files[key])}>{busy ? 'Preparing image…' : pair ? 'Prepare photo and signature' : tool.name}</button>
     {processingError && <p className="alert alert-warning mt-3" role="alert">{processingError}</p>}
+      </div>
+    </div>
     {results.length > 0 && <section className="government-results" aria-labelledby="government-results-title" aria-live="polite">
       <h2 id="government-results-title">Preview and download</h2>
       <div className="government-results-grid">{results.map((result) => <article className="government-result-card" key={result.name}>

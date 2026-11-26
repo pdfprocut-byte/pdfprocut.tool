@@ -10,8 +10,16 @@
 .government-preset-status-example { color: #875b10; }
 .government-preset-meta { margin-top: .35rem!important; color: #667085; font-size: .76rem; }
 .government-preset-selector { margin-bottom: .6rem; }
-.government-tool-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 1rem; margin-top: 1.4rem; }
+.government-tool-workspace { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; gap: 1rem; margin-top: 1.1rem; }
+.government-tool-visual-column,.government-tool-control-column { min-width: 0; }
+.government-tool-inputs { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; margin-top: 0; }
+.government-tool-control-column > .government-preset-selector { margin-top: 0; }
+.government-dimension-settings { min-width: 0; margin-top: 0; padding: 1.15rem; border: 1px solid #e6eaf0; border-radius: 1rem; background: #fff; box-shadow: 0 6px 18px #18233b08; }
+.government-dimension-settings .government-dimensions:first-child { margin-top: 0; }
+.government-dimension-settings .government-dimensions + .government-dimensions { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid #eaecf0; }
+.government-tool-control-column > .btn { width: 100%; }
 .government-tool-slot,.government-tool-settings,.government-camera,.government-results { min-width: 0; margin-top: 1rem; padding: 1.2rem; border: 1px solid #e6eaf0; border-radius: 1rem; background: #fff; box-shadow: 0 6px 18px #18233b08; }
+.government-tool-inputs > .government-tool-slot:first-child { margin-top: 0; }
 .government-tool-slot h2,.government-tool-settings h2,.government-camera h2,.government-results h2 { margin: 0 0 .9rem; color: #2e3a50; font-size: 1.08rem; font-weight: 750; }
 .government-file-label { display: grid; gap: .45rem; color: #344054; font-size: .88rem; font-weight: 650; }
 .government-file-label input { width: 100%; padding: .7rem; border: 1px dashed #b8c4d7; border-radius: .65rem; background: #f8fafc; font-size: .85rem; }
@@ -56,6 +64,11 @@
 .government-result-card .btn { margin-top: auto; }
 .government-tool-reminder { margin-top: 1rem; color: #667085; font-size: .8rem; line-height: 1.6; }
 @media (max-width: 520px) {
+  .government-tool-workspace { gap: .25rem; }
   .government-tool-slot,.government-tool-settings,.government-camera,.government-results { padding: 1rem; }
   .government-dimension-fields { gap: .5rem; }
+}
+@media (max-width: 780px) {
+  .government-tool-workspace { grid-template-columns: minmax(0, 1fr); }
+  .government-tool-inputs { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
 }
