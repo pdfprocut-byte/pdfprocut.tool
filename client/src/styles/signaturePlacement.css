@@ -64,7 +64,7 @@
 .tool-page-pdf-edit .signature-placement-layout{grid-template-columns:minmax(0,1fr) minmax(300px,320px);gap:1rem}
 .tool-page-pdf-edit .signature-placement-tools{max-height:min(78vh,880px);padding:1rem}
 .tool-page-pdf-edit .signature-placement-workspace{max-height:min(80vh,960px);padding:.8rem}
-.tool-page-pdf-edit .signature-placement-page{width:min(100%,640px)}
+.tool-page-pdf-edit .signature-placement-page{width:min(100%,760px)}
 .tool-page-image-placement .signature-placement-section{margin-top:1.5rem;padding:1.15rem}
 .tool-page-image-placement .signature-placement-layout{grid-template-columns:minmax(0,1fr) minmax(300px,320px);gap:1rem}
 .tool-page-image-placement .signature-placement-tools{max-height:min(78vh,880px);padding:1rem}

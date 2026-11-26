@@ -65,11 +65,11 @@ export default function SignaturePlacementPreview({ pdfFile, signatureFile, page
         const safePageNumber = Math.min(Math.max(1, Number(pageNumber) || 1), document.numPages);
         const page = await document.getPage(safePageNumber);
         const baseViewport = page.getViewport({ scale: 1 });
-        const maxWidth = Math.min(640, window.innerWidth - 64);
-        const maxHeight = Math.min(760, window.innerHeight * 0.72);
-        const scale = Math.min(maxWidth / baseViewport.width, maxHeight / baseViewport.height, 1.5);
+        const maxWidth = Math.min(1000, window.innerWidth - 64);
+        const maxHeight = Math.min(1200, window.innerHeight * 0.9);
+        const scale = Math.min(maxWidth / baseViewport.width, maxHeight / baseViewport.height, 2);
         const displayViewport = page.getViewport({ scale });
-        const pixelRatio = Math.min(Math.max(window.devicePixelRatio || 1, 2), 2.5);
+        const pixelRatio = Math.min(Math.max(window.devicePixelRatio || 1, 2.5), 3);
         const renderViewport = page.getViewport({ scale: scale * pixelRatio });
         const canvas = window.document.createElement('canvas');
         canvas.width = Math.ceil(renderViewport.width);
