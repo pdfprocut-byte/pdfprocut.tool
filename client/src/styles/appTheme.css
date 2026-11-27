@@ -1251,20 +1251,12 @@ html, body, #root { min-height: 100%; }
     transform: none;
   }
 
-  .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-primary-nav > .nav-link:nth-child(2) {
+  .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-primary-nav > .nav-link.active {
     border-color: #ffffffed;
     background: linear-gradient(100deg, #a42bf0 0%, #5727f4 42%, #009bea 100%);
     color: #fff !important;
     box-shadow: 0 4px 0 #5424c6, 0 8px 16px #3f48b52e, inset 0 1px 0 #ffffffa8;
     text-shadow: 0 1px 2px #30205d55;
-  }
-
-  .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-primary-nav > .nav-link.active:not(:nth-child(2)) {
-    border-color: #ffffffed;
-    background: linear-gradient(110deg, #d7edff 0%, #d9dcff 58%, #f1def4 100%);
-    color: #35294b !important;
-    box-shadow: 0 3px 0 #c6c5e6, 0 6px 13px #55416e18, inset 0 1px 0 #fff;
-    text-shadow: none;
   }
 
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-tool-section-nav {
@@ -1316,8 +1308,8 @@ html, body, #root { min-height: 100%; }
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-section-menu.is-open .pdfpro-section-trigger-row,
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-section-menu:has(.pdfpro-section-link.active) .pdfpro-section-trigger-row {
     border: 1px solid #ffffffed;
-    background: linear-gradient(110deg, #d7edff 0%, #d9dcff 58%, #f1def4 100%);
-    box-shadow: 0 3px 0 #c6c5e6, 0 6px 13px #55416e18, inset 0 1px 0 #fff;
+    background: linear-gradient(100deg, #a42bf0 0%, #5727f4 42%, #009bea 100%);
+    box-shadow: 0 4px 0 #5424c6, 0 8px 16px #3f48b52e, inset 0 1px 0 #ffffffa8;
   }
 
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-section-menu.is-open .pdfpro-section-link,
@@ -1325,13 +1317,13 @@ html, body, #root { min-height: 100%; }
     border-color: transparent;
     background: transparent;
     box-shadow: none;
-    color: #35294b !important;
+    color: #fff !important;
   }
 
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-section-menu.is-open .pdfpro-tools-dropdown-toggle,
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-section-menu:has(.pdfpro-section-link.active) .pdfpro-tools-dropdown-toggle {
     background: transparent;
-    color: #35294b;
+    color: #fff;
   }
 
   .pdfpro-navbar:has(.pdfpro-nav-content.is-open) .pdfpro-tools-dropdown-toggle {
