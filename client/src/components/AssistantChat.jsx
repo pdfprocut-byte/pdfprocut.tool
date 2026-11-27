@@ -16,9 +16,9 @@ const suggestions = [
 ];
 const appPaths = /(\/tools(?:\/[a-z0-9-]+)?|\/guides|\/about|\/contact|\/profile|\/login|\/register|\/privacy-policy|\/terms|\/word-editor)/gi;
 
-function MessageText({ text }) {
+function MessageText({ text, onNavigate }) {
   return text.split(appPaths).map((part, index) => /^\/(tools(?:\/[a-z0-9-]+)?|guides|about|contact|profile|login|register|privacy-policy|terms|word-editor)$/i.test(part)
-    ? <Link key={`${part}-${index}`} to={part}>{part}</Link>
+    ? <Link key={`${part}-${index}`} to={part} onClick={onNavigate}>{part}</Link>
     : part);
 }
 
@@ -118,7 +118,7 @@ export default function AssistantChat() {
         </div>}
         {messages.length > 1 && messages.map((message, index) => <div key={`${message.role}-${index}`} className={`assistant-chat-message assistant-chat-message-${message.role}${message.failed ? ' is-error' : ''}`}>
           <span className="assistant-chat-message-label">{message.role === 'user' ? 'You' : <><FaRobot aria-hidden="true"/> Alien</>}</span>
-          <div className={`assistant-chat-bubble${message.failed ? ' is-error' : ''}`}><MessageText text={message.content}/></div>
+          <div className={`assistant-chat-bubble${message.failed ? ' is-error' : ''}`}><MessageText text={message.content} onNavigate={() => setOpen(false)}/></div>
         </div>)}
         {sending && <div className="assistant-chat-message assistant-chat-message-assistant"><div className="assistant-chat-bubble assistant-chat-thinking" aria-label="Alien is responding"><i/><i/><i/></div></div>}
         {messages.length === 1 && <div className="assistant-chat-suggestions" aria-label="Suggested questions">
