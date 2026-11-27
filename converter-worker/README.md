@@ -1,6 +1,6 @@
 # Isolated Office-to-PDF worker
 
-This worker converts DOC/DOCX, XLS/XLSX, and PPT/PPTX uploads to PDF using LibreOffice when Adobe PDF Services credentials are not configured. For PDF-to-DOCX, it uses pdf2docx to rebuild editable text, tables, images, and page layout locally. The worker is separate from the Express API so document parsers run in a constrained container.
+This worker can convert DOC/DOCX, XLS/XLSX, and PPT/PPTX uploads to PDF using LibreOffice when called directly. The Express API requires Adobe PDF Services for Excel-to-PDF and does not fall back to LibreOffice for XLS/XLSX. For PDF-to-DOCX, the worker uses pdf2docx to rebuild editable text, tables, images, and page layout locally. The worker is separate from the Express API so document parsers run in a constrained container.
 
 From the project root, start the worker with:
 

@@ -17,7 +17,12 @@ export async function officeFileToPdf(file) {
   const extension = String(file.originalname || '').split('.').at(-1).toLowerCase();
   if (!extensions.has(extension)) throw new ApiError(415, 'Choose a DOC, DOCX, XLS, XLSX, PPT, or PPTX file');
   if (!expectedMimeTypes[extension].includes(file.mimetype)) throw new ApiError(415, 'The file extension and document type do not match');
-  if (env.adobePdfServicesClientId && env.adobePdfServicesClientSecret) {
+  const hasAdobeCredentials = Boolean(env.adobePdfServicesClientId && env.adobePdfServicesClientSecret);
+  const isSpreadsheet = extension === 'xls' || extension === 'xlsx';
+  if (isSpreadsheet && !hasAdobeCredentials) {
+    throw new ApiError(503, 'Excel to PDF requires Adobe PDF Services. Configure PDF_SERVICES_CLIENT_ID and PDF_SERVICES_CLIENT_SECRET.');
+  }
+  if (hasAdobeCredentials) {
     return officeToPdfWithAdobe(file, extension);
   }
 

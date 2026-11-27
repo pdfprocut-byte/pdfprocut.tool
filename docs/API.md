@@ -5,7 +5,7 @@ Additional PDF-processing routes:
 | Method | Route | File fields | Other fields |
 |---|---|---|---|
 | POST | `/api/pdf/html-to-pdf` | none | `html` with basic text formatting |
-| POST | `/api/pdf/office-to-pdf` | `files` DOC/DOCX/XLS/XLSX/PPT/PPTX | uses Adobe PDF Services when configured; otherwise requires the isolated LibreOffice converter worker |
+| POST | `/api/pdf/office-to-pdf` | `files` DOC/DOCX/XLS/XLSX/PPT/PPTX | XLS/XLSX require Adobe PDF Services; DOC/DOCX/PPT/PPTX use Adobe when configured or the isolated LibreOffice worker otherwise |
 | POST | `/api/pdf/pdf-to-powerpoint` | `files` PDF | returns image-based `PDFPro.pptx` |
 | POST | `/api/pdf/pdf-to-pdfa` | `files` PDF | rasterized PDF/A-1b output |
 | POST | `/api/pdf/repair-pdf` | `files` PDF | repair/normalize a readable PDF |

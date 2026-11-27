@@ -53,4 +53,141 @@
   .contact-submit { transition: none; }
   .contact-submit:hover { transform: none; }
 }
-.about-developer{padding:0 0 6rem;background:#fff}.about-developer-card{display:flex;align-items:center;justify-content:space-between;gap:2rem;padding:2.4rem 2.7rem;border:1px solid #e7eaf0;border-radius:22px;background:linear-gradient(120deg,#fbfcff,#fff7f6);box-shadow:0 16px 35px #24334c0a}.about-developer-card h2{margin:0 0 .5rem;color:#202a3b;font-size:clamp(1.5rem,3vw,2rem);font-weight:760;letter-spacing:-.055em}.about-developer-card p{margin:0;color:#667085;line-height:1.65}.about-developer-contact{display:grid;gap:.35rem;justify-items:end}.about-developer-contact>span{color:#8a94a4;font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.about-developer-contact a{color:#bd2639;font-size:.95rem;font-weight:700;text-decoration:none}.about-developer-contact a:hover{text-decoration:underline}.about-developer-contact small{color:#7b8594;font-size:.78rem}@media(max-width:767px){.about-developer{padding-bottom:4.5rem}.about-developer-card{align-items:flex-start;flex-direction:column;padding:1.5rem}.about-developer-contact{justify-items:start}}
+.about-developer {
+  padding: 1.25rem 0 6rem;
+  background: linear-gradient(120deg, #f7f0ff 0%, #edf9ff 54%, #fff0f7 100%);
+}
+
+.about-developer-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2.5rem 2.7rem;
+  border: 1px solid transparent;
+  border-radius: 28px;
+  background: linear-gradient(120deg, #fff9ec 0%, #f2eaff 40%, #e1f5ff 76%, #fff0f7 100%) padding-box,
+    linear-gradient(115deg, #8750f5, #35a9ed, #e965b3, #f1b75a, #8750f5) border-box;
+  box-shadow: 0 5px 0 #c8b5e6, 0 24px 52px #45336e24, inset 0 1px 0 #fff;
+  transform: perspective(1200px) rotateX(1deg);
+  transform-style: preserve-3d;
+  transition: transform .38s cubic-bezier(.2,.8,.2,1), box-shadow .38s ease;
+}
+
+.about-developer-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 8% 12%, #9c63ff38, transparent 34%),
+    radial-gradient(ellipse at 90% 88%, #27bce938, transparent 32%),
+    linear-gradient(105deg, #ffffff00 24%, #ffffffa1 49%, #ffffff00 74%);
+  background-size: 100% 100%, 100% 100%, 220% 100%;
+  animation: about-developer-sheen 8s ease-in-out infinite;
+  content: '';
+  pointer-events: none;
+}
+
+.about-developer-card > div {
+  position: relative;
+  z-index: 1;
+  transform: translateZ(18px);
+}
+
+.about-developer-card .pdfpro-info-eyebrow {
+  display: inline-flex;
+  padding: .35rem .7rem;
+  border: 1px solid #ffffffd9;
+  border-radius: 999px;
+  background: #ffffffa8;
+  color: #6735c6;
+  box-shadow: 0 4px 12px #5d3a8b16;
+}
+
+.about-developer-card h2 {
+  margin: .7rem 0 .5rem;
+  background: linear-gradient(100deg, #241a42, #6b2fc3 56%, #138ab9);
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -.055em;
+}
+
+.about-developer-card p {
+  margin: 0;
+  color: #4c5470;
+  line-height: 1.65;
+}
+
+.about-developer-contact {
+  display: grid;
+  gap: .4rem;
+  justify-items: end;
+  padding: 1rem 1.3rem;
+  border: 1px solid #ffffffd9;
+  border-radius: 18px;
+  background: #ffffffa8;
+  box-shadow: 0 10px 24px #49366e1a, inset 0 1px 0 #fff;
+  backdrop-filter: blur(12px);
+  transform: translateZ(24px);
+}
+
+.about-developer-card > .about-developer-contact {
+  transform: translateZ(24px);
+}
+
+.about-developer-contact > span {
+  color: #69708a;
+  font-size: .72rem;
+  font-weight: 750;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.about-developer-contact a {
+  color: #6525c2;
+  font-size: 1rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: color .18s ease, transform .18s ease;
+}
+
+.about-developer-contact a:hover {
+  color: #087fae;
+  text-decoration: underline;
+  transform: translateY(-1px);
+}
+
+.about-developer-contact small {
+  color: #717b93;
+  font-size: .8rem;
+}
+
+@keyframes about-developer-sheen {
+  0%, 100% { background-position: 0 0, 0 0, 100% 0; }
+  50% { background-position: 0 0, 0 0, 0 0; }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .about-developer-card:hover {
+    box-shadow: 0 8px 0 #bda8e2, 0 32px 65px #45336e30, inset 0 1px 0 #fff;
+    transform: perspective(1200px) translateY(-6px) rotateX(2deg) rotateY(-.4deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .about-developer { padding-bottom: 4.5rem; }
+  .about-developer-card { align-items: flex-start; flex-direction: column; gap: 1.25rem; padding: 1.5rem; }
+  .about-developer-contact { justify-items: start; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about-developer-card,
+  .about-developer-card::before,
+  .about-developer-contact a { animation: none; transition: none; }
+  .about-developer-card { transform: none; }
+}
