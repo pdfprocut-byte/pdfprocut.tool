@@ -1411,3 +1411,19 @@ html, body, #root { min-height: 100%; }
   .pdfpro-navbar .pdfpro-tools-dropdown-toggle { width: 1.68rem; }
   .pdfpro-navbar .pdfpro-section-menu + .pdfpro-section-menu .pdfpro-section-link::before { margin-right: .38rem; }
 }
+
+@media (min-width: 992px) {
+  .pdfpro-navbar .pdfpro-tools-dropdown-toggle {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .pdfpro-navbar .pdfpro-tools-dropdown-toggle[aria-expanded="true"] {
+    background: transparent;
+    box-shadow: none;
+    color: #6244a7;
+    transform: none;
+  }
+}
