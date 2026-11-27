@@ -23,11 +23,12 @@ app.use(cors({
   credentials: true,
   exposedHeaders: ['X-Job-Id', 'X-Original-Size', 'X-Output-Size', 'X-Target-Size', 'X-Target-Met', 'X-Target-Difference', 'X-Target-Tolerance', 'X-Compression-Mode', 'X-Output-Quality', 'X-Dimension-Adjusted', 'X-Compression-Warning', 'X-Output-Width', 'X-Output-Height', 'X-PDF-Rasterized', 'X-PDF-Word-Mode']
 }));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false }));
-app.use(express.json({ limit: '10mb', strict: true }));
-app.use(cookieParser());
+// Render probes this endpoint frequently; keep it outside the API rate limit.
 app.get('/api/health', (req, res) => res.json({ success: true, data: { status: 'ok' } }));
 app.get('/', (_req, res) => res.json({ success: true, data: { service: 'PDF Pro Cut API', frontend: env.clientUrl } }));
+app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false }));
+app.use(express.json({ limit: '10mb', strict: true }));
+app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', wordDocumentRoutes);
 app.use('/api/pdf', requireEnabledTool, pdfRoutes);
