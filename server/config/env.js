@@ -31,6 +31,7 @@ export const env = {
   officeConverterUrl: (process.env.OFFICE_CONVERTER_URL || 'http://127.0.0.1:3101').replace(/\/+$/, ''),
   adobePdfServicesClientId: process.env.PDF_SERVICES_CLIENT_ID || '',
   adobePdfServicesClientSecret: process.env.PDF_SERVICES_CLIENT_SECRET || '',
+  photoRoomApiKey: process.env.PHOTOROOM_API_KEY || '',
   jwtSecret: process.env.JWT_SECRET, clientUrl,
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   resend: {

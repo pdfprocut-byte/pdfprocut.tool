@@ -2,6 +2,38 @@ import { v4 as uuid } from 'uuid';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { compressImage } from '../services/compressionService.js';
+import { env } from '../config/env.js';
+import { removePhotoBackground } from '../services/photoBackgroundService.js';
+
+export const backgroundStatus = asyncHandler(async (_req, res) => {
+  res.json({ success: true, data: { available: Boolean(env.photoRoomApiKey) } });
+});
+
+export const removeBackground = asyncHandler(async (req, res) => {
+  const uploaded = req.file;
+  if (!uploaded) throw new ApiError(400, 'Choose a JPG, PNG, or WebP image first.');
+  if (req.body.consent !== 'yes') throw new ApiError(400, 'Confirm that this image may be sent to PhotoRoom for background processing.');
+
+  const isJpeg = uploaded.buffer[0] === 0xff && uploaded.buffer[1] === 0xd8 && uploaded.buffer[2] === 0xff;
+  const isPng = uploaded.buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const isWebp = uploaded.buffer.toString('ascii', 0, 4) === 'RIFF' && uploaded.buffer.toString('ascii', 8, 12) === 'WEBP';
+  if (!isJpeg && !isPng && !isWebp) throw new ApiError(415, 'The image contents do not match a supported JPG, PNG, or WebP file.');
+
+  let backgroundColor = '';
+  if (req.body.backgroundColor) {
+    backgroundColor = String(req.body.backgroundColor).trim();
+    if (!/^#?[\da-f]{6}$/i.test(backgroundColor)) throw new ApiError(400, 'Choose a valid six-digit background color.');
+    backgroundColor = backgroundColor.replace(/^#/, '').toUpperCase();
+  }
+
+  const imageType = isJpeg ? 'image/jpeg' : isPng ? 'image/png' : 'image/webp';
+  const result = await removePhotoBackground({ ...uploaded, mimetype: imageType }, backgroundColor);
+  res.set({
+    'Content-Type': result.type,
+    'Content-Disposition': 'attachment; filename="background-removed.png"',
+    'Cache-Control': 'no-store'
+  }).send(result.buffer);
+});
 
 export const compress = asyncHandler(async (req, res) => {
   const uploaded = req.files?.[0];

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProtectedDownload from '../components/auth/ProtectedDownload.jsx';
 import { createPassportPrintSheet } from '../lib/passportPrintSheet.js';
+import { getPhotoRoomBackgroundStatus, processPhotoBackground } from '../lib/photoRoomBackground.js';
 import { createDownloadName } from '../utils/downloadName.js';
 import { findImageEncoding, getImageTargetToleranceBytes, MAX_IMAGE_QUALITY, MIN_IMAGE_QUALITY } from '../../../shared/imageTargetEncoder.mjs';
 import { governmentImagePresets, governmentPresetByTool, governmentToolGuidanceByTool, socialPostPresets, socialProfilePresets, socialStoryPresets } from '../../../shared/imagePresets.mjs';
@@ -89,6 +90,26 @@ function sampleCornerBackground(data, width, height) {
     const distance = colors.reduce((sum, color) => sum + Math.hypot(color[0] - candidate[0], color[1] - candidate[1], color[2] - candidate[2]), 0);
     return distance < best.distance ? { color: candidate, distance } : best;
   }, { color: colors[0], distance: Infinity }).color;
+}
+
+function sampleCornerBackgrounds(data, width, height) {
+  const patchSize = Math.min(width, height, 24, Math.max(1, Math.round(Math.min(width, height) * 0.01)));
+  const corners = [[0, 0], [width - patchSize, 0], [0, height - patchSize], [width - patchSize, height - patchSize]];
+  return corners.map(([startX, startY]) => {
+    const channels = [[], [], []];
+    for (let y = startY; y < startY + patchSize; y += 1) {
+      for (let x = startX; x < startX + patchSize; x += 1) {
+        const offset = (y * width + x) * 4;
+        if (data[offset + 3] < 32) continue;
+        channels[0].push(data[offset]); channels[1].push(data[offset + 1]); channels[2].push(data[offset + 2]);
+      }
+    }
+    return channels.map((channel) => {
+      if (!channel.length) return 255;
+      channel.sort((a, b) => a - b);
+      return channel[Math.floor(channel.length / 2)];
+    });
+  });
 }
 
 async function replaceSampledBackground(context, width, height, tolerance, backgroundColor = '#ffffff') {
@@ -182,15 +203,23 @@ async function prepareImage(file, options) {
 
     if (options.removeBackground) {
       const pixels = baseContext.getImageData(0, 0, sourceWidth, sourceHeight);
-      const threshold = Number(options.backgroundThreshold);
+      const corners = sampleCornerBackgrounds(pixels.data, sourceWidth, sourceHeight);
+      const tolerance = Math.max(5, Math.min(120, Number(options.signatureTolerance) || 48));
       for (let y = 0; y < sourceHeight; y += 1) {
+        const vertical = sourceHeight > 1 ? y / (sourceHeight - 1) : 0;
         for (let x = 0; x < sourceWidth; x += 1) {
           const offset = (y * sourceWidth + x) * 4;
           const red = pixels.data[offset]; const green = pixels.data[offset + 1]; const blue = pixels.data[offset + 2];
-          const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
-          const lightness = Math.min(red, green, blue);
-          if (lightness >= threshold && spread <= 48) pixels.data[offset + 3] = 0;
-          else if (lightness >= threshold - 16 && spread <= 36) pixels.data[offset + 3] = Math.round(255 * (threshold - lightness + 16) / 16);
+          const horizontal = sourceWidth > 1 ? x / (sourceWidth - 1) : 0;
+          const inverseHorizontal = 1 - horizontal;
+          const inverseVertical = 1 - vertical;
+          const expectedRed = (corners[0][0] * inverseHorizontal + corners[1][0] * horizontal) * inverseVertical + (corners[2][0] * inverseHorizontal + corners[3][0] * horizontal) * vertical;
+          const expectedGreen = (corners[0][1] * inverseHorizontal + corners[1][1] * horizontal) * inverseVertical + (corners[2][1] * inverseHorizontal + corners[3][1] * horizontal) * vertical;
+          const expectedBlue = (corners[0][2] * inverseHorizontal + corners[1][2] * horizontal) * inverseVertical + (corners[2][2] * inverseHorizontal + corners[3][2] * horizontal) * vertical;
+          const distance = Math.hypot(red - expectedRed, green - expectedGreen, blue - expectedBlue) / Math.sqrt(3);
+          const progress = Math.max(0, Math.min(1, (distance - 2) / (tolerance - 2)));
+          const smoothProgress = progress * progress * (3 - 2 * progress);
+          pixels.data[offset + 3] = Math.round(pixels.data[offset + 3] * smoothProgress);
         }
         if (y > 0 && y % 64 === 0) await yieldToBrowser();
       }
@@ -395,8 +424,10 @@ export default function GovernmentImageToolPage({ tool }) {
   const [whiteBackground, setWhiteBackground] = useState(initialPreset?.whiteBackground ?? config.kind === 'white-background');
   const [fitMode, setFitMode] = useState(initialPreset?.fitMode || (socialMediaTool ? 'cover' : 'contain'));
   const [trim, setTrim] = useState(Boolean(config.crop));
-  const [backgroundThreshold, setBackgroundThreshold] = useState('238');
+  const [signatureTolerance, setSignatureTolerance] = useState('48');
   const [backgroundTolerance, setBackgroundTolerance] = useState('48');
+  const [photoRoomAvailable, setPhotoRoomAvailable] = useState(null);
+  const [usePhotoRoomBackground, setUsePhotoRoomBackground] = useState(false);
   const [format, setFormat] = useState(initialPreset?.format || (config.kind === 'remove-background' ? 'png' : 'jpeg'));
   const [addNameDate, setAddNameDate] = useState(hasNameDateOption);
   const [photoName, setPhotoName] = useState('');
@@ -423,6 +454,15 @@ export default function GovernmentImageToolPage({ tool }) {
     ? selectedSocialPreset.sourceUrl ? [{ label: selectedSocialPreset.sourceLabel || `${selectedSocialPreset.label} image guidance`, url: selectedSocialPreset.sourceUrl }] : []
     : basePreset?.sources || (basePreset?.sourceUrl ? [{ label: basePreset.sourceLabel || 'Official size guidance', url: basePreset.sourceUrl }] : currentGuidance?.sources || []);
   const showSizeTarget = compression || Boolean(currentPreset?.maxKb) || presetMode === 'custom';
+
+  useEffect(() => {
+    if (!replaceBackground) return undefined;
+    let cancelled = false;
+    getPhotoRoomBackgroundStatus()
+      .then((enabled) => { if (!cancelled) setPhotoRoomAvailable(enabled); })
+      .catch(() => { if (!cancelled) setPhotoRoomAvailable(false); });
+    return () => { cancelled = true; };
+  }, [replaceBackground]);
 
   const makeObjectUrl = (blob) => {
     const url = URL.createObjectURL(blob);
@@ -571,15 +611,23 @@ export default function GovernmentImageToolPage({ tool }) {
         if (slotPreset?.maxWidth && (outputWidth > slotPreset.maxWidth || outputHeight > slotPreset.maxHeight)) {
           throw new Error(`This preset allows at most ${slotPreset.maxWidth} × ${slotPreset.maxHeight} px. Check the current notice before using larger custom dimensions.`);
         }
-        let output = await prepareImage(files[slot.key], {
+        let sourceFile = files[slot.key];
+        let shouldReplaceBackground = replaceBackground;
+        if (replaceBackground && usePhotoRoomBackground) {
+          if (!photoRoomAvailable) throw new Error('AI background processing is not configured on this server.');
+          const backgroundBlob = await processPhotoBackground(sourceFile, { backgroundColor, consent: true });
+          sourceFile = new File([backgroundBlob], `${sourceFile.name.replace(/\.[^.]+$/, '')}-background.png`, { type: backgroundBlob.type });
+          shouldReplaceBackground = false;
+        }
+        let output = await prepareImage(sourceFile, {
           width: selectedDimensions.width,
           height: selectedDimensions.height,
           fitMode,
           whiteBackground,
           trim: trim && (pair ? slot.key === 'signature' : true),
           removeBackground,
-          replaceBackground,
-          backgroundThreshold,
+          replaceBackground: shouldReplaceBackground,
+          signatureTolerance,
           backgroundTolerance,
           backgroundColor,
           rotation,
@@ -643,7 +691,7 @@ export default function GovernmentImageToolPage({ tool }) {
           : currentGuidance?.note || basePreset?.note || 'Image processing happens in this browser. Use the dimensions and file-size limits in the current application notice; there is no single standard for every service.'}</p>
       {officialSources.map((source) => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.label} ↗</a>)}
       {!socialMediaTool && basePreset && <p className="government-preset-meta">{basePreset.recruitmentName || basePreset.label}{basePreset.postName ? ` · ${basePreset.postName}` : ''}{basePreset.notificationYear ? ` · ${basePreset.notificationYear}` : ''}{basePreset.width && basePreset.height ? ` · ${basePreset.width} × ${basePreset.height} px` : ''}{basePreset.minKb || basePreset.maxKb ? ` · ${basePreset.minKb ? `${basePreset.minKb}–` : 'up to '}${basePreset.maxKb || ''} KB` : ''}{basePreset.format ? ` · ${basePreset.format.toUpperCase()}` : ''}{basePreset.dpi ? ` · ${basePreset.dpi} DPI` : ''}{basePreset.validThrough ? ` · valid through ${basePreset.validThrough}` : ''}</p>}
-      <p className="government-tool-privacy-note">Your image stays in this browser. Preset sizes, dimensions, frame handling, and output format can be changed before download.</p>
+      <p className="government-tool-privacy-note">{replaceBackground && usePhotoRoomBackground ? 'The photo is sent through the PDF Pro Cut server to PhotoRoom for AI background removal. PhotoRoom says it discards API images after processing and does not use them for training.' : 'Your image stays in this browser. Preset sizes, dimensions, frame handling, and output format can be changed before download.'}</p>
     </div>
     <div className="government-tool-workspace">
       <div className="government-tool-visual-column">
@@ -720,7 +768,12 @@ export default function GovernmentImageToolPage({ tool }) {
       {config.kind !== 'white-background' && !removeBackground && <label className="government-setting-check"><input type="checkbox" checked={whiteBackground} onChange={(event) => setWhiteBackground(event.target.checked)}/> Place transparent areas on a white background</label>}
       {(config.kind === 'white-background' || fitMode === 'contain' || whiteBackground) && <label className="government-inline-field">Background color<input className="form-control form-control-color" type="color" value={backgroundColor} onChange={(event) => { clearResults(); setBackgroundColor(event.target.value); }}/><small>Used for empty frame areas and background replacement. Choose white when the notice requires it.</small></label>}
       {config.kind === 'white-background' && <>
-        <p>Similar colors in the image corners are sampled and turned white. This works best with a plain, evenly lit background; inspect hair and clothing edges in the preview.</p>
+        <p>The local option replaces colors similar to the image corners. It works best with a plain, evenly lit background. The optional AI mode separates the subject before applying the selected background color.</p>
+        {photoRoomAvailable === true
+          ? <label className="government-setting-check"><input type="checkbox" checked={usePhotoRoomBackground} onChange={(event) => { clearResults(); setUsePhotoRoomBackground(event.target.checked); }}/> Use PhotoRoom AI for this photo. I agree to send a copy to PhotoRoom for processing.</label>
+          : photoRoomAvailable === false
+            ? <small className="d-block text-secondary">AI background processing is not configured on this server. The local corner-color option remains available.</small>
+            : <small className="d-block text-secondary">Checking whether AI background processing is available…</small>}
         <label className="government-inline-field">Background color tolerance: {backgroundTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={backgroundTolerance} onChange={(event) => setBackgroundTolerance(event.target.value)}/></label>
       </>}
       {(config.crop || pair) && <label className="government-setting-check"><input type="checkbox" checked={trim} onChange={(event) => setTrim(event.target.checked)}/> Trim blank borders around the signature</label>}
@@ -731,7 +784,7 @@ export default function GovernmentImageToolPage({ tool }) {
       {showSizeTarget && !currentPreset?.width && !currentPreset?.minWidth && <label className="government-setting-check"><input type="checkbox" checked={allowDimensionReduction} onChange={(event) => setAllowDimensionReduction(event.target.checked)}/> Automatically reduce dimensions when quality alone cannot reach the size<small>{allowDimensionReduction ? 'Enabled for this run; aspect ratio is preserved and reduction is used only when needed.' : 'Disabled; dimensions stay fixed unless you enable it. Check the current notice before allowing smaller dimensions.'}</small></label>}
       {!removeBackground && <label className="government-inline-field">JPEG image quality: {quality}%<input className="form-range" type="range" min="55" max="100" step="1" value={quality} disabled={format === 'png'} onChange={(event) => setQuality(Number(event.target.value))}/><small>{targetKb ? 'Binary search selects the highest image quality that fits, or the closest honest target candidate.' : 'This sets lossy JPEG encoding quality. PNG output ignores this slider.'} PNG output ignores this slider.</small></label>}
       {dpiMode && <div className="government-inline-field"><label>Resolution metadata (DPI)<select className="form-select" value={dpiChoice} onChange={(event) => { setDpiChoice(event.target.value); if (event.target.value !== 'custom') setDpi(event.target.value); }}><option value="72">72 DPI</option><option value="96">96 DPI</option><option value="150">150 DPI</option><option value="200">200 DPI</option><option value="300">300 DPI</option><option value="600">600 DPI</option><option value="custom">Custom DPI</option></select></label>{dpiChoice === 'custom' && <input className="form-control" aria-label="Custom resolution in DPI" type="number" min="1" max="12000" step="1" value={dpi} onChange={(event) => setDpi(event.target.value)}/>}<small>DPI is print-size metadata. It does not add detail or change pixel dimensions unless you explicitly resize the image.</small></div>}
-      {removeBackground && <label className="government-inline-field">White-background removal threshold: {backgroundThreshold}<input className="form-range" type="range" min="205" max="252" step="1" value={backgroundThreshold} onChange={(event) => setBackgroundThreshold(event.target.value)}/><small>Works best with a plain, near-white background. Inspect fine signature strokes before using the PNG.</small></label>}
+      {removeBackground && <label className="government-inline-field">Paper shade tolerance: {signatureTolerance}<input className="form-range" type="range" min="15" max="110" step="1" value={signatureTolerance} onChange={(event) => { clearResults(); setSignatureTolerance(event.target.value); }}/><small>Higher values remove more uneven paper shading, but can lighten thin ink. Inspect the transparent preview before downloading.</small></label>}
       {!removeBackground && <label className="government-inline-field">Output format<select className="form-select" value={format} onChange={(event) => setFormat(event.target.value)}><option value="jpeg">JPG</option><option value="png">PNG</option></select>{currentPreset?.format === 'jpeg' && !socialMediaTool && <small>The selected service guidance specifies JPG. Choose PNG only if the application accepts it.</small>}</label>}
     </section>
 
