@@ -11,6 +11,7 @@ import AnalyticsEvent from '../models/AnalyticsEvent.js';
 import SystemLog from '../models/SystemLog.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
+import { v4 as uuid } from 'uuid';
 
 const pageSize = (value) => Math.min(Math.max(Number.parseInt(value, 10) || 20, 1), 100);
 const clean = (value, max = 500) => typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -82,7 +83,7 @@ export const dashboard = asyncHandler(async (req, res) => {
     AnalyticsEvent.aggregate([{ $match: { type: 'tool_used', source: 'pdf-api', createdAt: { $gte: since } } }, { $group: { _id: '$tool', count: { $sum: 1 } } }, { $sort: { count: -1 } }, { $limit: 5 }]),
     SystemLog.find().sort({ createdAt: -1 }).limit(6).populate('actorId', 'name').lean()
   ]);
-  res.json({ success: true, data: { stats: { users, blockedUsers, jobs, completedJobs, activeSubscriptions, visitors, todayVisits, todayVisitors, timeSpentSeconds: timeSpent[0]?.seconds || 0, revenue }, timeZone, recentJobs, popularTools, recentLogs } });
+  res.json({ success: true, data: { stats: { users, blockedUsers, jobs, completedJobs, activeSubscriptions, visitors, pageViewsLast30Days: visitors, todayVisits, pageViewsToday: todayVisits, todayVisitors, timeSpentSeconds: timeSpent[0]?.seconds || 0, revenue }, timeZone, recentJobs, popularTools, recentLogs } });
 });
 
 export const listUsers = asyncHandler(async (req, res) => {
@@ -107,30 +108,51 @@ export const listVisits = asyncHandler(async (req, res) => {
     const sourcePattern = query.toLowerCase().includes('internal') ? internalSourcePattern : pattern;
     filter.$or = [{ path: pattern }, { country: pattern }, { source: sourcePattern }, { visitorId: pattern }, { userId: { $in: matchingUsers } }];
   }
-  const [items, total, visitorIds, topPages, topSources, dailyActivity] = await Promise.all([
+  const [items, total, visitorIds, visitIds, topPages, topSources, dailyActivity] = await Promise.all([
     AnalyticsEvent.find(filter).select('visitorId userId path country source createdAt').populate('userId', 'name email').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
     AnalyticsEvent.countDocuments(filter),
     AnalyticsEvent.distinct('visitorId', { ...monthlyMatch, visitorId: { $type: 'string', $ne: '' } }),
-    AnalyticsEvent.aggregate([{ $match: monthlyMatch }, { $group: { _id: '$path', visits: { $sum: 1 } } }, { $sort: { visits: -1 } }, { $limit: 1 }]),
-    AnalyticsEvent.aggregate([{ $match: { ...monthlyMatch, source: { $type: 'string', $ne: '', $not: internalSourcePattern } } }, { $group: { _id: '$source', visits: { $sum: 1 } } }, { $sort: { visits: -1 } }, { $limit: 1 }]),
+    AnalyticsEvent.distinct('visitId', { ...monthlyMatch, visitId: { $type: 'string', $ne: '' } }),
+    AnalyticsEvent.aggregate([{ $match: monthlyMatch }, { $group: { _id: '$path', pageViews: { $sum: 1 } } }, { $sort: { pageViews: -1 } }, { $limit: 1 }]),
+    AnalyticsEvent.aggregate([{ $match: { ...monthlyMatch, source: { $type: 'string', $ne: '', $not: internalSourcePattern } } }, { $group: { _id: '$source', pageViews: { $sum: 1 } } }, { $sort: { pageViews: -1 } }, { $limit: 1 }]),
     AnalyticsEvent.aggregate([
       { $match: { createdAt: { $gte: selectedMonth.start, $lt: selectedMonth.end }, $or: [{ type: 'page_view', path: { $not: /^\/admin(?:\/|$)/ } }, { type: 'session', path: { $not: /^\/admin(?:\/|$)/ } }, { type: 'tool_used', source: 'pdf-api' }] } },
       { $group: {
         _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: timeZone } },
         pageViews: { $sum: { $cond: [{ $eq: ['$type', 'page_view'] }, 1, 0] } },
         visitorIds: { $addToSet: { $cond: [{ $eq: ['$type', 'page_view'] }, '$visitorId', null] } },
+        visitIds: { $addToSet: { $cond: [{ $eq: ['$type', 'page_view'] }, '$visitId', null] } },
         pdfUses: { $sum: { $cond: [{ $and: [{ $eq: ['$type', 'tool_used'] }, { $eq: ['$source', 'pdf-api'] }] }, 1, 0] } },
         activeSeconds: { $sum: { $cond: [{ $eq: ['$type', 'session'] }, '$durationSeconds', 0] } }
       } },
       { $sort: { _id: 1 } }
     ])
   ]);
-  const activityByDay = new Map(dailyActivity.map((day) => [day._id, { visitors: (day.visitorIds || []).filter(Boolean).length, pageViews: day.pageViews, pdfUses: day.pdfUses, activeSeconds: day.activeSeconds }]));
+  const activityByDay = new Map(dailyActivity.map((day) => {
+    const visitors = (day.visitorIds || []).filter(Boolean).length;
+    const visits = (day.visitIds || []).filter(Boolean).length;
+    return [day._id, { visitors, visitorIds: visitors, visits, visitCount: visits, pageViews: day.pageViews, pdfUses: day.pdfUses, activeSeconds: day.activeSeconds }];
+  }));
   const daily = Array.from({ length: selectedMonth.days }, (_, index) => {
     const date = new Date(Date.UTC(selectedMonth.year, selectedMonth.monthNumber - 1, index + 1)).toISOString().slice(0, 10);
-    return { date, ...(activityByDay.get(date) || { visitors: 0, pageViews: 0, pdfUses: 0, activeSeconds: 0 }) };
+    return { date, ...(activityByDay.get(date) || { visitors: 0, visitorIds: 0, visits: 0, visitCount: 0, pageViews: 0, pdfUses: 0, activeSeconds: 0 }) };
   });
-  const summary = { visits: daily.reduce((sum, day) => sum + day.pageViews, 0), visitorIds: visitorIds.length, pdfUses: daily.reduce((sum, day) => sum + day.pdfUses, 0), activeSeconds: daily.reduce((sum, day) => sum + day.activeSeconds, 0), topPage: topPages[0] || null, topSource: topSources[0] || null };
+  const pageViews = daily.reduce((sum, day) => sum + day.pageViews, 0);
+  const uniqueVisitors = visitorIds.filter(Boolean).length;
+  const uniqueVisits = visitIds.filter(Boolean).length;
+  const topPage = topPages[0] ? { ...topPages[0], visits: topPages[0].pageViews } : null;
+  const topSource = topSources[0] ? { ...topSources[0], visits: topSources[0].pageViews } : null;
+  const summary = {
+    pageViews,
+    visits: pageViews, // Legacy alias: this field historically contained page views.
+    visitorIds: uniqueVisitors,
+    visitors: uniqueVisitors,
+    visitCount: uniqueVisits,
+    pdfUses: daily.reduce((sum, day) => sum + day.pdfUses, 0),
+    activeSeconds: daily.reduce((sum, day) => sum + day.activeSeconds, 0),
+    topPage,
+    topSource
+  };
   const normalizedItems = items.map((item) => ({ ...item, source: internalSourcePattern.test(item.source || '') ? 'internal' : item.source }));
   res.json({ success: true, data: { items: normalizedItems, total, page, pages: Math.ceil(total / limit), month: selectedMonth.month, timeZone, summary, daily } });
 });
@@ -174,7 +196,7 @@ export const listVisitVisitors = asyncHandler(async (req, res) => {
   const accounts = await User.find({ _id: { $in: userIds } }).select('name email').lean();
   const accountsById = new Map(accounts.map((account) => [String(account._id), account]));
   const total = result?.meta?.[0]?.total || 0;
-  res.json({ success: true, data: { items: items.map(({ visitIds = [], ...item }) => ({ ...item, paths: item.paths.filter(Boolean), visitCount: visitIds.filter(Boolean).length, source: internalSourcePattern.test(item.source || '') ? 'internal' : item.source, user: item.userId ? accountsById.get(String(item.userId)) || null : null })), total, page, pages: Math.ceil(total / limit), month: selectedMonth.month, timeZone } });
+  res.json({ success: true, data: { items: items.map(({ visitIds = [], ...item }) => ({ ...item, pageViews: item.visits, paths: item.paths.filter(Boolean), visitCount: visitIds.filter(Boolean).length, source: internalSourcePattern.test(item.source || '') ? 'internal' : item.source, user: item.userId ? accountsById.get(String(item.userId)) || null : null })), total, page, pages: Math.ceil(total / limit), month: selectedMonth.month, timeZone } });
 });
 
 export const updateUser = asyncHandler(async (req, res) => {
@@ -244,6 +266,7 @@ export const saveSubscription = asyncHandler(async (req, res) => { const payload
 
 export const analytics = asyncHandler(async (req, res) => {
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const timeZone = validTimeZone(req.query.timeZone);
   const pageViewMatch = { type: 'page_view', path: { $not: /^\/admin(?:\/|$)/ }, createdAt: { $gte: since } };
   const internalSourcePattern = internalSourcePatternFor(req);
   const visitorBreakdown = (field) => AnalyticsEvent.aggregate([
@@ -264,11 +287,11 @@ export const analytics = asyncHandler(async (req, res) => {
     visitorBreakdown('source'),
     AnalyticsEvent.aggregate([
       { $match: pageViewMatch },
-      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, value: { $sum: 1 } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: timeZone } }, value: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ])
   ]);
-  res.json({ success: true, data: { countries, tools, sources, daily } });
+  res.json({ success: true, data: { countries, tools, sources, daily, timeZone } });
 });
 export const logs = asyncHandler(async (req, res) => { const page = Number.parseInt(req.query.page, 10) || 1; const limit = pageSize(req.query.limit); const [items, total] = await Promise.all([SystemLog.find().sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).populate('actorId', 'name email').lean(), SystemLog.countDocuments()]); res.json({ success: true, data: { items, total, page, pages: Math.ceil(total / limit) } }); });
 
@@ -278,20 +301,26 @@ export const backup = asyncHandler(async (req, res) => { const [users, tools, se
 export const trackAnalytics = asyncHandler(async (req, res) => {
   const type = req.body.type === 'session' ? 'session' : 'page_view';
   const pathValue = clean(req.body.path, 240) || '/';
-  const visitorId = clean(req.body.visitorId, 100);
-  const visitId = clean(req.body.visitId, 100);
+  const visitorId = clean(req.body.visitorId, 100) || uuid();
+  const visitId = clean(req.body.visitId, 100) || uuid();
+  const eventId = clean(req.body.eventId, 100) || uuid();
   const country = clean(req.get('cf-ipcountry') || req.body.country, 2).toUpperCase() || 'UN';
   const reportedSource = clean(req.body.source, 80) || 'direct';
   const source = internalSourcePatternFor(req).test(reportedSource) ? 'internal' : reportedSource;
-  if (AnalyticsEvent.db.readyState !== 1) return res.status(202).json({ success: true, data: { tracked: false } });
+  if (AnalyticsEvent.db.readyState !== 1) {
+    console.warn('[analytics] Event was not stored because MongoDB is unavailable.');
+    return res.status(202).json({ success: true, data: { tracked: false } });
+  }
   try {
-    if (req.user && visitorId) {
-      await AnalyticsEvent.updateMany({ visitorId, userId: { $in: [null] } }, { $set: { userId: req.user._id } });
-    }
-    await AnalyticsEvent.create({ userId: req.user?._id, visitorId, visitId, type, path: pathValue, country: /^[A-Z]{2}$/.test(country) ? country : 'UN', source, durationSeconds: type === 'session' ? Math.min(Math.max(Number(req.body.durationSeconds) || 0, 0), 86400) : 0 });
+    await AnalyticsEvent.create({ eventId, userId: req.user?._id, visitorId, visitId, type, path: pathValue, country: /^[A-Z]{2}$/.test(country) ? country : 'UN', source, durationSeconds: type === 'session' ? Math.min(Math.max(Number(req.body.durationSeconds) || 0, 0), 86400) : 0 });
     res.status(201).json({ success: true });
   } catch (error) {
-    if (isDatabaseUnavailable(error)) return res.status(202).json({ success: true, data: { tracked: false } });
+    if (error?.code === 11000 && error?.keyPattern?.eventId) return res.status(200).json({ success: true, data: { tracked: false, duplicate: true } });
+    if (isDatabaseUnavailable(error)) {
+      console.warn('[analytics] Event write failed because MongoDB is unavailable.', { errorName: error?.name || 'Error', errorCode: error?.code });
+      return res.status(202).json({ success: true, data: { tracked: false } });
+    }
+    console.error('[analytics] Failed to persist event.', { errorName: error?.name || 'Error', errorCode: error?.code });
     throw error;
   }
 });

@@ -133,19 +133,21 @@ export default function AdminDashboard() {
           <MonthPicker value={dailyMonthDraft} onChange={setDailyMonthDraft} onApply={applyDailyMonth} busy={busy}/>
         </div>
         <div className="admin-visit-insights">
-          <VisitInsight icon={FaEye} label="Page views" value={dailySummary.visits || 0} note={`Page visits · ${dailyMonthLabel}`} tone="rose"/>
-          <VisitInsight icon={FaUsers} label="Visitor IDs" value={dailySummary.visitorIds || 0} note={`Distinct IDs · ${dailyMonthLabel}`} tone="violet"/>
+          <VisitInsight icon={FaEye} label="Page views" value={dailySummary.pageViews ?? dailySummary.visits ?? 0} note={`Total page loads · ${dailyMonthLabel}`} tone="rose"/>
+          <VisitInsight icon={FaUsers} label="Unique visitors" value={dailySummary.visitors ?? dailySummary.visitorIds ?? 0} note={`Distinct browser IDs · ${dailyMonthLabel}`} tone="violet"/>
+          <VisitInsight icon={FaChartBar} label="Visits" value={dailySummary.visitCount || 0} note={`Separate 30-minute visits · ${dailyMonthLabel}`} tone="blue"/>
           <VisitInsight icon={FaChartLine} label="PDF tool uses" value={dailySummary.pdfUses || 0} note={`Successful jobs · ${dailyMonthLabel}`} tone="green"/>
-          <VisitInsight icon={FaClock} label="Active time" value={timeLabel(dailySummary.activeSeconds || 0)} note={`Tracked sessions · ${dailyMonthLabel}`} tone="amber"/>
-          <VisitInsight icon={FaFileAlt} label="Most visited page" value={dailySummary.topPage?._id || '—'} note={dailySummary.topPage ? `${dailySummary.topPage.visits} views · ${dailyMonthLabel}` : 'No page data this month'} tone="blue"/>
-          <VisitInsight icon={FaGlobe} label="Top traffic source" value={dailySummary.topSource?._id || '—'} note={dailySummary.topSource ? `${dailySummary.topSource.visits} visits · ${dailyMonthLabel}` : 'No source data this month'} tone="violet"/>
+          <VisitInsight icon={FaClock} label="Active time" value={timeLabel(dailySummary.activeSeconds || 0)} note={`Visible, recently active estimate · ${dailyMonthLabel}`} tone="amber"/>
+          <VisitInsight icon={FaFileAlt} label="Most visited page" value={dailySummary.topPage?._id || '—'} note={dailySummary.topPage ? `${dailySummary.topPage.pageViews ?? dailySummary.topPage.visits} page views · ${dailyMonthLabel}` : 'No page data this month'} tone="blue"/>
+          <VisitInsight icon={FaGlobe} label="Top traffic source" value={dailySummary.topSource?._id || '—'} note={dailySummary.topSource ? `${dailySummary.topSource.pageViews ?? dailySummary.topSource.visits} page views · ${dailyMonthLabel}` : 'No source data this month'} tone="violet"/>
         </div>
-        <div className="admin-section-head admin-daily-heading"><div><h2>Daily activity</h2><p>Visitor IDs, page views, successful PDF tool uses, and tracked time for every day in {dailyMonthLabel}.</p></div></div>
+        <div className="admin-section-head admin-daily-heading"><div><h2>Daily activity</h2><p>Unique visitors, visits, page views, successful PDF tool uses, and active time for every day in {dailyMonthLabel}.</p><small>Older page views and tool uses remain unchanged. Missing historical visit IDs cannot be reconstructed, and older active-time records retain the earlier tracking method. New active time estimates visible, recently active browser intervals.</small><small>Traffic-source totals are page views. A missing referrer is labeled direct, which does not confirm a direct human visit.</small></div></div>
         <section className="admin-panel admin-table-wrap admin-daily-table"><table>
-          <thead><tr><th>Date</th><th>Visitor IDs</th><th>Page views</th><th>PDF tool uses</th><th>Active time</th></tr></thead>
+          <thead><tr><th>Date</th><th>Unique visitors</th><th>Visits</th><th>Page views</th><th>PDF tool uses</th><th>Active time</th></tr></thead>
           <tbody>{dailyVisits.map((day) => <tr key={day.date}>
             <td><b>{new Date(`${day.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</b></td>
             <td><span className="admin-daily-number violet">{day.visitors}</span></td>
+            <td><span className="admin-daily-number blue">{day.visits ?? day.visitCount ?? 0}</span></td>
             <td><span className="admin-daily-number rose">{day.pageViews}</span></td>
             <td><span className="admin-daily-number green">{day.pdfUses}</span></td>
             <td><span className="admin-daily-time">{timeLabel(day.activeSeconds || 0)}</span></td>

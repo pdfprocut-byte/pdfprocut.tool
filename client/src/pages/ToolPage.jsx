@@ -9,6 +9,7 @@ import ToolGuide from '../components/tools/ToolGuide.jsx';
 import UploadedFileList from '../components/pdf/UploadedFileList.jsx';
 import { useBrowserDraft } from '../lib/browserDraft.js';
 import { apiBaseUrl } from '../lib/authApi.js';
+import { analyticsRequestHeaders } from '../lib/analyticsTracking.js';
 
 const PdfPagePreview = lazy(() => import('../components/pdf/PdfPagePreview.jsx'));
 const MergePdfPage = lazy(() => import('./MergePdfPage.jsx'));
@@ -96,7 +97,7 @@ function ToolPageContent({ tool }) {
       if (tool.rotate) body.append('angle', angle); if (tool.start) body.append('start', start);
       if (tool.protect) body.append('password', password);
       if (tool.ocr) body.append('languages', ocrLanguages.join('+'));
-      const response = await fetch(`${apiBaseUrl}/pdf/${tool.endpoint}`, { method: 'POST', body, credentials: 'include' });
+      const response = await fetch(`${apiBaseUrl}/pdf/${tool.endpoint}`, { method: 'POST', body, credentials: 'include', headers: analyticsRequestHeaders() });
       if (!response.ok) { const error = await response.json(); throw Error(error.error); }
       setResult(URL.createObjectURL(await response.blob())); toast.success('Your PDF is ready');
     } catch (error) { toast.error(error.message); } finally { setBusy(false); }

@@ -1,10 +1,11 @@
 import { apiBaseUrl } from './authApi.js';
+import { analyticsRequestHeaders } from './analyticsTracking.js';
 
 export async function readPdfText(file, name) {
   const body = new FormData();
   body.append('files', file, name);
   const response = await fetch(`${apiBaseUrl}/pdf/pdf-to-document/text`, {
-    method: 'POST', body, credentials: 'include'
+    method: 'POST', body, credentials: 'include', headers: analyticsRequestHeaders()
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || 'Could not read this PDF');

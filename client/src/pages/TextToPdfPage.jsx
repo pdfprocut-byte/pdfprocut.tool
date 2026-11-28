@@ -5,6 +5,7 @@ import { DownloadResultModal, OperationProgressModal } from '../components/pdf/F
 import OfficePdfDocumentPreview from '../components/pdf/OfficePdfDocumentPreview.jsx';
 import ToolGuide from '../components/tools/ToolGuide.jsx';
 import { apiBaseUrl, getCsrfToken } from '../lib/authApi.js';
+import { analyticsRequestHeaders } from '../lib/analyticsTracking.js';
 import { useBrowserDraft } from '../lib/browserDraft.js';
 import { createDownloadName } from '../utils/downloadName.js';
 import { decodeTextFile } from '../../../shared/documentText.mjs';
@@ -191,7 +192,7 @@ export default function TextToPdfPage({ tool, format = 'pdf' }) {
       try {
         const body = new FormData();
         body.append('files', officeSourceFile);
-        const response = await fetch(`${apiBaseUrl}/pdf/office-to-pdf`, { method: 'POST', body, credentials: 'include', signal: controller.signal });
+        const response = await fetch(`${apiBaseUrl}/pdf/office-to-pdf`, { method: 'POST', body, credentials: 'include', headers: analyticsRequestHeaders(), signal: controller.signal });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
           throw new Error(payload.error || 'Could not render the original Word layout.');

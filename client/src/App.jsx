@@ -7,6 +7,7 @@ import ToolsPage from './pages/ToolsPage.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ProfileProvider } from './context/ProfileContext.jsx';
 import { fetchWithCredentials, apiBaseUrl } from './lib/authApi.js';
+import { AnalyticsSessionTracker, TRAFFIC_SOURCE_KEY } from './lib/analyticsTracking.js';
 import { useAuth } from './context/AuthContext.jsx';
 import { toolCatalog } from '../../shared/toolCatalog.mjs';
 import { homeSeo, pageSeo } from '../../shared/pageSeo.mjs';
@@ -82,66 +83,101 @@ function ScrollToTop() {
   return null;
 }
 
+function sendAnalyticsEvent(event, keepalive = false) {
+  if (!event) return;
+  fetchWithCredentials(`${apiBaseUrl}/analytics/events`, {
+    method: 'POST',
+    keepalive,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event)
+  }).catch(() => {});
+}
+
+function getTrafficSource() {
+  let source = sessionStorage.getItem(TRAFFIC_SOURCE_KEY);
+  if (source) return source;
+  try {
+    const campaignSource = new URL(window.location.href).searchParams.get('utm_source')?.trim();
+    const referrer = document.referrer ? new URL(document.referrer) : null;
+    source = campaignSource || (referrer && referrer.origin !== window.location.origin ? referrer.hostname : 'direct');
+  } catch {
+    source = 'direct';
+  }
+  sessionStorage.setItem(TRAFFIC_SOURCE_KEY, source);
+  return source;
+}
+
 function AnalyticsTracker() {
   const { pathname } = useLocation();
   const { loading } = useAuth();
-  const visitorKey = 'pdfprocut_visitor_id';
-  const visitKey = 'pdfprocut_visit_id';
-  const visitActivityKey = 'pdfprocut_visit_last_active';
-  const sourceKey = 'pdfprocut_traffic_source';
-  const lastPageViewKey = useRef('');
-  const lastReportedAt = useRef(Date.now());
+  const trackerRef = useRef(null);
+  const currentPath = useRef(pathname);
+  currentPath.current = pathname;
+  if (!trackerRef.current) trackerRef.current = new AnalyticsSessionTracker();
+  const tracker = trackerRef.current;
+
   useEffect(() => {
-    if (loading || pathname.startsWith('/admin')) return;
-    let visitorId = localStorage.getItem(visitorKey) || sessionStorage.getItem(visitorKey);
-    if (!visitorId) visitorId = crypto.randomUUID();
-    localStorage.setItem(visitorKey, visitorId);
-    sessionStorage.setItem(visitorKey, visitorId);
-    const now = Date.now();
-    const lastActivity = Number(localStorage.getItem(visitActivityKey)) || 0;
-    let visitId = localStorage.getItem(visitKey);
-    if (!visitId || !lastActivity || now - lastActivity > 30 * 60 * 1000) visitId = crypto.randomUUID();
-    localStorage.setItem(visitKey, visitId);
-    localStorage.setItem(visitActivityKey, String(now));
-    sessionStorage.setItem(visitKey, visitId);
-    const pageViewKey = `${visitorId}:${pathname}`;
-    if (lastPageViewKey.current === pageViewKey) return;
-    lastPageViewKey.current = pageViewKey;
-    let source = sessionStorage.getItem(sourceKey);
-    if (!source) {
-      const campaignSource = new URL(window.location.href).searchParams.get('utm_source')?.trim();
-      const referrer = document.referrer ? new URL(document.referrer) : null;
-      source = campaignSource || (referrer && referrer.origin !== window.location.origin ? referrer.hostname : 'direct');
-      sessionStorage.setItem(sourceKey, source);
+    if (pathname.startsWith('/admin')) {
+      tracker.lastHeartbeatAt = Date.now();
+      return;
     }
-    fetchWithCredentials(`${apiBaseUrl}/analytics/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visitorId, visitId, type: 'page_view', path: pathname, source }) }).catch(() => {});
+    if (loading) return;
+    sendAnalyticsEvent(tracker.pageView(pathname, getTrafficSource()));
   }, [pathname, loading]);
+
   useEffect(() => {
-    const recordSession = () => {
-      if (window.location.pathname.startsWith('/admin')) {
-        lastReportedAt.current = Date.now();
+    const isTrackedPage = () => !currentPath.current.startsWith('/admin');
+    const isForeground = () => document.visibilityState === 'visible' && document.hasFocus();
+    const resetBaseline = (now = Date.now()) => { tracker.lastHeartbeatAt = now; };
+    const heartbeat = () => {
+      if (!isTrackedPage()) return resetBaseline();
+      sendAnalyticsEvent(tracker.heartbeat({ path: currentPath.current, visible: isForeground() }), true);
+    };
+    const pageHide = () => {
+      if (!isTrackedPage()) return resetBaseline();
+      sendAnalyticsEvent(tracker.pageHide({ path: currentPath.current, visible: isForeground() }), true);
+    };
+    const visibilityChange = () => {
+      if (!isTrackedPage()) {
+        tracker.visibilityChange(isForeground());
         return;
       }
-      if (document.visibilityState === 'hidden' && !navigator.sendBeacon) return;
-      const visitorId = localStorage.getItem(visitorKey) || sessionStorage.getItem(visitorKey);
-      const durationSeconds = Math.round((Date.now() - lastReportedAt.current) / 1000);
-      if (!visitorId || durationSeconds < 1) return;
-      const now = Date.now();
-      const lastActivity = Number(localStorage.getItem(visitActivityKey)) || 0;
-      let visitId = localStorage.getItem(visitKey) || sessionStorage.getItem(visitKey);
-      const isVisible = document.visibilityState !== 'hidden';
-      if (!visitId || !lastActivity || (isVisible && now - lastActivity > 30 * 60 * 1000)) visitId = crypto.randomUUID();
-      if (isVisible) {
-        localStorage.setItem(visitKey, visitId);
-        localStorage.setItem(visitActivityKey, String(now));
-        sessionStorage.setItem(visitKey, visitId);
-      }
-      lastReportedAt.current = Date.now();
-      fetchWithCredentials(`${apiBaseUrl}/analytics/events`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visitorId, visitId, type: 'session', path: window.location.pathname, durationSeconds }) }).catch(() => {});
+      sendAnalyticsEvent(tracker.visibilityChange(isForeground(), Date.now(), currentPath.current), true);
     };
-    const interval = window.setInterval(() => { if (document.visibilityState === 'visible') recordSession(); }, 30_000);
-    window.addEventListener('pagehide', recordSession);
-    return () => { window.clearInterval(interval); window.removeEventListener('pagehide', recordSession); };
+    const windowBlur = () => {
+      if (!isTrackedPage()) return resetBaseline();
+      sendAnalyticsEvent(tracker.visibilityChange(false, Date.now(), currentPath.current), true);
+    };
+    const windowFocus = () => tracker.visibilityChange(isForeground(), Date.now(), currentPath.current);
+    let lastInputAt = 0;
+    const userActivity = () => {
+      if (!isTrackedPage() || !isForeground()) return;
+      const now = Date.now();
+      if (now - lastInputAt < 1000) return;
+      lastInputAt = now;
+      tracker.markActivity(now);
+    };
+    const interval = window.setInterval(heartbeat, 15_000);
+    window.addEventListener('pagehide', pageHide);
+    document.addEventListener('visibilitychange', visibilityChange);
+    window.addEventListener('blur', windowBlur);
+    window.addEventListener('focus', windowFocus);
+    window.addEventListener('pointerdown', userActivity, { passive: true });
+    window.addEventListener('keydown', userActivity);
+    window.addEventListener('scroll', userActivity, { passive: true });
+    window.addEventListener('touchstart', userActivity, { passive: true });
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('pagehide', pageHide);
+      document.removeEventListener('visibilitychange', visibilityChange);
+      window.removeEventListener('blur', windowBlur);
+      window.removeEventListener('focus', windowFocus);
+      window.removeEventListener('pointerdown', userActivity);
+      window.removeEventListener('keydown', userActivity);
+      window.removeEventListener('scroll', userActivity);
+      window.removeEventListener('touchstart', userActivity);
+      resetBaseline();
+    };
   }, []);
   return null;
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "test:analytics": "node --test test/analyticsTracking.test.js test/analyticsController.test.js test/operationAnalytics.test.js test/analyticsDatabase.test.js"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
