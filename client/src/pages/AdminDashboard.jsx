@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { FaBars, FaCalendarAlt, FaChartLine, FaClock, FaCog, FaEnvelope, FaEye, FaFileAlt, FaGlobe, FaHistory, FaShieldAlt, FaSpinner, FaTools, FaUsers, FaWrench } from 'react-icons/fa';
+import { FaBars, FaCalendarAlt, FaChartBar, FaChartLine, FaClock, FaCog, FaEnvelope, FaEye, FaFileAlt, FaGlobe, FaHistory, FaShieldAlt, FaSpinner, FaTools, FaUsers, FaWrench } from 'react-icons/fa';
 import { adminRequest, apiBaseUrl } from '../lib/authApi.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import UserActivity from '../components/admin/UserActivity.jsx';
@@ -10,7 +10,7 @@ import VisitorActivity from '../components/admin/VisitorActivity.jsx';
 import ContactInbox from '../components/admin/ContactInbox.jsx';
 import '../styles/admin.css';
 
-const sections = [['overview', 'Overview', FaChartLine], ['visits', 'Visit history', FaHistory], ['daily', 'Daily usage', FaCalendarAlt], ['tools', 'File tools', FaTools], ['users', 'Users', FaUsers], ['messages', 'Messages', FaEnvelope], ['content', 'Content', FaFileAlt], ['settings', 'SEO & settings', FaCog], ['security', 'Security & logs', FaShieldAlt], ['maintenance', 'Maintenance', FaWrench]];
+const sections = [['overview', 'Overview', FaChartLine], ['visits', 'Visit history', FaHistory], ['visitCounts', 'Visit counts', FaChartBar], ['daily', 'Daily usage', FaCalendarAlt], ['tools', 'File tools', FaTools], ['users', 'Users', FaUsers], ['messages', 'Messages', FaEnvelope], ['content', 'Content', FaFileAlt], ['settings', 'SEO & settings', FaCog], ['security', 'Security & logs', FaShieldAlt], ['maintenance', 'Maintenance', FaWrench]];
 const emptyTool = { name: '', slug: '', endpoint: '', description: '', category: 'General', enabled: true, sortOrder: 0 };
 const emptyContent = { title: '', slug: '', body: '', status: 'draft' };
 const currentMonth = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; };
@@ -23,16 +23,39 @@ function SimpleBars({ title, data }) { const max = Math.max(...data.map((item) =
 
 export default function AdminDashboard() {
   const { user, loading } = useAuth(); const [section, setSection] = useState('overview'); const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false); const [visitDetailsBusy, setVisitDetailsBusy] = useState(false); const [data, setData] = useState({}); const [toolForm, setToolForm] = useState(null); const [contentForm, setContentForm] = useState(null); const [userQuery, setUserQuery] = useState(''); const [visitQuery, setVisitQuery] = useState(''); const [visitMonth, setVisitMonth] = useState(currentMonth); const [visitMonthDraft, setVisitMonthDraft] = useState(currentMonth); const [dailyMonth, setDailyMonth] = useState(currentMonth); const [dailyMonthDraft, setDailyMonthDraft] = useState(currentMonth); const [visitPage, setVisitPage] = useState(1); const [activity, setActivity] = useState(null); const [visitActivity, setVisitActivity] = useState(null); const [guestVisitActivity, setGuestVisitActivity] = useState(null);
-  const load = async (name = section, options = {}) => { setBusy(true); try { const timeZone = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'); const routes = { overview: `dashboard?timeZone=${timeZone}`, visits: `visitors?page=${options.page || visitPage}&q=${encodeURIComponent(options.query ?? visitQuery)}&month=${encodeURIComponent(options.month ?? visitMonth)}&timeZone=${timeZone}`, daily: `visits?page=1&month=${encodeURIComponent(options.month ?? dailyMonth)}&timeZone=${timeZone}`, tools: 'tools', users: `users?q=${encodeURIComponent(userQuery)}`, messages: `messages?page=${options.page ?? data.messages?.page ?? 1}`, content: 'content', settings: 'settings', security: 'logs', maintenance: 'dashboard' }; const response = await adminRequest(routes[name]); setData((previous) => ({ ...previous, [name]: response })); } catch (error) { toast.error(error.message); } finally { setBusy(false); } };
-  useEffect(() => { if (user?.role === 'admin') load(section); }, [section, user]);
+  const [visitCountPage, setVisitCountPage] = useState(1);
+  const load = async (name = section, options = {}) => {
+    setBusy(true);
+    try {
+      const timeZone = encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+      const page = options.page || (name === 'visitCounts' ? visitCountPage : visitPage);
+      const visitRoute = `visitors?page=${page}&q=${encodeURIComponent(options.query ?? visitQuery)}&month=${encodeURIComponent(options.month ?? visitMonth)}&timeZone=${timeZone}`;
+      const routes = {
+        overview: `dashboard?timeZone=${timeZone}`,
+        visits: visitRoute,
+        visitCounts: `${visitRoute}&sort=visitCount`,
+        daily: `visits?page=1&month=${encodeURIComponent(options.month ?? dailyMonth)}&timeZone=${timeZone}`,
+        tools: 'tools', users: `users?q=${encodeURIComponent(userQuery)}`,
+        messages: `messages?page=${options.page ?? data.messages?.page ?? 1}`,
+        content: 'content', settings: 'settings', security: 'logs', maintenance: 'dashboard'
+      };
+      const response = await adminRequest(routes[name]);
+      setData((previous) => ({ ...previous, [name]: response }));
+    } catch (error) { toast.error(error.message); } finally { setBusy(false); }
+  };
+  useEffect(() => { if (user?.role === 'admin') { if (section === 'visitCounts') { setVisitCountPage(1); load(section, { page: 1 }); } else load(section); } }, [section, user]);
   useEffect(() => { if (section !== 'overview' || user?.role !== 'admin') return undefined; const refresh = window.setInterval(() => load('overview'), 15_000); return () => window.clearInterval(refresh); }, [section, user]);
   if (loading) return <main className="admin-loading">Loading administration…</main>;
   if (user?.role !== 'admin') return <Navigate to="/admin/login" replace />;
   const dashboard = data.overview || {}; const statistics = dashboard.stats || {}; const tools = data.tools?.items || []; const users = data.users?.items || []; const visitData = data.visits || {}; const visitors = visitData.items || []; const visitPages = Math.max(visitData.pages || 1, 1); const dailyData = data.daily || {}; const dailySummary = dailyData.summary || {}; const dailyVisits = dailyData.daily || []; const visitMonthLabel = new Date(Number(visitMonth.slice(0, 4)), Number(visitMonth.slice(5, 7)) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); const dailyMonthLabel = new Date(Number(dailyMonth.slice(0, 4)), Number(dailyMonth.slice(5, 7)) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); const content = data.content?.items || []; const settings = data.settings || {}; const logs = data.security?.items || [];
+  const visitCountData = data.visitCounts || {}; const visitCountItems = visitCountData.items || []; const visitCountPages = Math.max(visitCountData.pages || 1, 1);
   const searchVisits = () => { setVisitPage(1); load('visits', { page: 1, query: visitQuery }); };
+  const searchVisitCounts = () => { setVisitCountPage(1); load('visitCounts', { page: 1, query: visitQuery }); };
   const applyVisitMonth = () => { if (!visitMonthDraft) return; setVisitMonth(visitMonthDraft); setVisitPage(1); load('visits', { page: 1, month: visitMonthDraft }); };
+  const applyVisitCountsMonth = () => { if (!visitMonthDraft) return; setVisitMonth(visitMonthDraft); setVisitCountPage(1); load('visitCounts', { page: 1, month: visitMonthDraft }); };
   const applyDailyMonth = () => { if (!dailyMonthDraft) return; setDailyMonth(dailyMonthDraft); load('daily', { month: dailyMonthDraft }); };
   const changeVisitPage = (page) => { setVisitPage(page); load('visits', { page }); };
+  const changeVisitCountsPage = (page) => { setVisitCountPage(page); load('visitCounts', { page }); };
   const openVisitorDetails = async (visitor) => {
     setVisitDetailsBusy(true); setVisitActivity(null); setGuestVisitActivity(null);
     try {
@@ -86,6 +109,23 @@ export default function AdminDashboard() {
         <div className="admin-pagination"><span>Page {visitData.page || visitPage} of {visitPages}</span><div><button className="admin-secondary" disabled={visitPage <= 1 || busy} onClick={() => changeVisitPage(visitPage - 1)}>Previous</button><button className="admin-secondary" disabled={visitPage >= visitPages || busy} onClick={() => changeVisitPage(visitPage + 1)}>Next</button></div></div>
         {visitActivity && createPortal(<div className="admin-visitor-modal-backdrop" role="presentation" onClick={() => setVisitActivity(null)}><div className="admin-visitor-modal-account" onClick={(event) => event.stopPropagation()}><UserActivity activity={visitActivity} onClose={() => setVisitActivity(null)}/></div></div>, document.body)}
         {guestVisitActivity && <VisitorActivity visitor={guestVisitActivity.visitor} activity={guestVisitActivity.details} onClose={() => setGuestVisitActivity(null)}/>}
+      </div>}
+      {section === 'visitCounts' && <div className="admin-content">
+        <div className="admin-section-head admin-visit-heading">
+          <div><p>See how many separate site visits each account or guest browser made.</p><small>{visitCountData.total || 0} visitor records · {visitMonthLabel}</small></div>
+          <div className="admin-visit-search"><MonthPicker value={visitMonthDraft} onChange={setVisitMonthDraft} onApply={applyVisitCountsMonth} busy={busy}/><input className="admin-search" placeholder="Search user, email, visitor ID" value={visitQuery} onChange={(event) => setVisitQuery(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && searchVisitCounts()}/><button className="admin-primary" onClick={searchVisitCounts}>Search</button></div>
+        </div>
+        <div className="admin-section-head admin-history-heading"><div><h2>Site visits by user</h2><p>A visit begins with the first page opened. Additional activity belongs to it until 30 minutes of inactivity.</p><p>Visit counts start with this tracking update. Earlier page views remain in Visit history.</p></div></div>
+        <section className="admin-panel admin-table-wrap admin-visit-table"><table>
+          <thead><tr><th>User</th><th>Site visits</th><th>Page views</th><th>Last visit</th></tr></thead>
+          <tbody>{visitCountItems.map((visitor) => <tr key={visitor._id}>
+            <td><b>{visitor.user?.name || 'Guest visitor'}</b><small>{visitor.user?.email || (visitor.visitorId ? `Visitor ID ${visitor.visitorId.slice(0, 8)}` : 'Anonymous visitor')}</small></td>
+            <td><span className="admin-daily-number violet">{visitor.visitCount || 0}</span></td>
+            <td><span className="admin-daily-number rose">{visitor.visits}</span></td>
+            <td className="admin-visit-date">{new Date(visitor.lastVisitedAt).toLocaleString()}</td>
+          </tr>)}{!visitCountItems.length && <tr><td colSpan="4" className="admin-visit-empty">{visitQuery ? 'No visitors match this search.' : 'No visitor history has been recorded for this month.'}</td></tr>}</tbody>
+        </table></section>
+        <div className="admin-pagination"><span>Page {visitCountData.page || visitCountPage} of {visitCountPages}</span><div><button className="admin-secondary" disabled={visitCountPage <= 1 || busy} onClick={() => changeVisitCountsPage(visitCountPage - 1)}>Previous</button><button className="admin-secondary" disabled={visitCountPage >= visitCountPages || busy} onClick={() => changeVisitCountsPage(visitCountPage + 1)}>Next</button></div></div>
       </div>}
       {section === 'daily' && <div className="admin-content">
         <div className="admin-section-head admin-visit-heading">

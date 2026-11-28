@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const schema = new mongoose.Schema({
   visitorId: { type: String, trim: true, maxlength: 100, index: true },
+  visitId: { type: String, trim: true, maxlength: 100, index: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
   type: { type: String, enum: ['page_view', 'tool_used', 'session'], default: 'page_view', index: true },
   path: { type: String, trim: true, maxlength: 240, default: '/' },

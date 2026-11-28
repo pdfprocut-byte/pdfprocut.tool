@@ -139,10 +139,11 @@ export const listVisitVisitors = asyncHandler(async (req, res) => {
   const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
   const limit = pageSize(req.query.limit);
   const query = clean(req.query.q, 120);
+  const sortByVisitCount = clean(req.query.sort, 20) === 'visitCount';
   const timeZone = validTimeZone(req.query.timeZone);
   const selectedMonth = localMonthRange(clean(req.query.month, 7), timeZone);
   const internalSourcePattern = internalSourcePatternFor(req);
-  const filter = { type: 'page_view', path: { $not: /^\/admin(?:\/|$)/ }, createdAt: { $gte: selectedMonth.start, $lt: selectedMonth.end } };
+  const filter = { type: sortByVisitCount ? { $in: ['page_view', 'session'] } : 'page_view', path: { $not: /^\/admin(?:\/|$)/ }, createdAt: { $gte: selectedMonth.start, $lt: selectedMonth.end } };
   if (query) {
     const pattern = new RegExp(escapeRegex(query), 'i');
     const matchingUsers = await User.distinct('_id', { $or: [{ name: pattern }, { email: pattern }] });
@@ -155,15 +156,17 @@ export const listVisitVisitors = asyncHandler(async (req, res) => {
       _id: { $ifNull: ['$userId', { $ifNull: ['$visitorId', '$_id'] }] },
       userId: { $first: '$userId' },
       visitorId: { $first: '$visitorId' },
-      visits: { $sum: 1 },
+      visitIds: { $addToSet: '$visitId' },
+      visits: { $sum: { $cond: [{ $eq: ['$type', 'page_view'] }, 1, 0] } },
       firstVisitedAt: { $min: '$createdAt' },
       lastVisitedAt: { $max: '$createdAt' },
-      paths: { $addToSet: '$path' },
+      paths: { $addToSet: { $cond: [{ $eq: ['$type', 'page_view'] }, '$path', null] } },
       country: { $last: '$country' },
       source: { $last: '$source' },
       lastPath: { $last: '$path' }
     } },
-    { $sort: { lastVisitedAt: -1 } },
+    { $addFields: { visitCount: { $size: { $setDifference: ['$visitIds', [null, '']] } } } },
+    { $sort: sortByVisitCount ? { visitCount: -1, lastVisitedAt: -1 } : { lastVisitedAt: -1 } },
     { $facet: { items: [{ $skip: (page - 1) * limit }, { $limit: limit }], meta: [{ $count: 'total' }] } }
   ]);
   const items = result?.items || [];
@@ -171,7 +174,7 @@ export const listVisitVisitors = asyncHandler(async (req, res) => {
   const accounts = await User.find({ _id: { $in: userIds } }).select('name email').lean();
   const accountsById = new Map(accounts.map((account) => [String(account._id), account]));
   const total = result?.meta?.[0]?.total || 0;
-  res.json({ success: true, data: { items: items.map((item) => ({ ...item, source: internalSourcePattern.test(item.source || '') ? 'internal' : item.source, user: item.userId ? accountsById.get(String(item.userId)) || null : null })), total, page, pages: Math.ceil(total / limit), month: selectedMonth.month, timeZone } });
+  res.json({ success: true, data: { items: items.map(({ visitIds = [], ...item }) => ({ ...item, paths: item.paths.filter(Boolean), visitCount: visitIds.filter(Boolean).length, source: internalSourcePattern.test(item.source || '') ? 'internal' : item.source, user: item.userId ? accountsById.get(String(item.userId)) || null : null })), total, page, pages: Math.ceil(total / limit), month: selectedMonth.month, timeZone } });
 });
 
 export const updateUser = asyncHandler(async (req, res) => {
@@ -276,6 +279,7 @@ export const trackAnalytics = asyncHandler(async (req, res) => {
   const type = req.body.type === 'session' ? 'session' : 'page_view';
   const pathValue = clean(req.body.path, 240) || '/';
   const visitorId = clean(req.body.visitorId, 100);
+  const visitId = clean(req.body.visitId, 100);
   const country = clean(req.get('cf-ipcountry') || req.body.country, 2).toUpperCase() || 'UN';
   const reportedSource = clean(req.body.source, 80) || 'direct';
   const source = internalSourcePatternFor(req).test(reportedSource) ? 'internal' : reportedSource;
@@ -284,7 +288,7 @@ export const trackAnalytics = asyncHandler(async (req, res) => {
     if (req.user && visitorId) {
       await AnalyticsEvent.updateMany({ visitorId, userId: { $in: [null] } }, { $set: { userId: req.user._id } });
     }
-    await AnalyticsEvent.create({ userId: req.user?._id, visitorId, type, path: pathValue, country: /^[A-Z]{2}$/.test(country) ? country : 'UN', source, durationSeconds: type === 'session' ? Math.min(Math.max(Number(req.body.durationSeconds) || 0, 0), 86400) : 0 });
+    await AnalyticsEvent.create({ userId: req.user?._id, visitorId, visitId, type, path: pathValue, country: /^[A-Z]{2}$/.test(country) ? country : 'UN', source, durationSeconds: type === 'session' ? Math.min(Math.max(Number(req.body.durationSeconds) || 0, 0), 86400) : 0 });
     res.status(201).json({ success: true });
   } catch (error) {
     if (isDatabaseUnavailable(error)) return res.status(202).json({ success: true, data: { tracked: false } });

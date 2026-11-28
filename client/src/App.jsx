@@ -86,13 +86,24 @@ function AnalyticsTracker() {
   const { pathname } = useLocation();
   const { loading } = useAuth();
   const visitorKey = 'pdfprocut_visitor_id';
+  const visitKey = 'pdfprocut_visit_id';
+  const visitActivityKey = 'pdfprocut_visit_last_active';
   const sourceKey = 'pdfprocut_traffic_source';
   const lastPageViewKey = useRef('');
   const lastReportedAt = useRef(Date.now());
   useEffect(() => {
     if (loading || pathname.startsWith('/admin')) return;
-    let visitorId = sessionStorage.getItem(visitorKey);
-    if (!visitorId) { visitorId = crypto.randomUUID(); sessionStorage.setItem(visitorKey, visitorId); }
+    let visitorId = localStorage.getItem(visitorKey) || sessionStorage.getItem(visitorKey);
+    if (!visitorId) visitorId = crypto.randomUUID();
+    localStorage.setItem(visitorKey, visitorId);
+    sessionStorage.setItem(visitorKey, visitorId);
+    const now = Date.now();
+    const lastActivity = Number(localStorage.getItem(visitActivityKey)) || 0;
+    let visitId = localStorage.getItem(visitKey);
+    if (!visitId || !lastActivity || now - lastActivity > 30 * 60 * 1000) visitId = crypto.randomUUID();
+    localStorage.setItem(visitKey, visitId);
+    localStorage.setItem(visitActivityKey, String(now));
+    sessionStorage.setItem(visitKey, visitId);
     const pageViewKey = `${visitorId}:${pathname}`;
     if (lastPageViewKey.current === pageViewKey) return;
     lastPageViewKey.current = pageViewKey;
@@ -103,7 +114,7 @@ function AnalyticsTracker() {
       source = campaignSource || (referrer && referrer.origin !== window.location.origin ? referrer.hostname : 'direct');
       sessionStorage.setItem(sourceKey, source);
     }
-    fetchWithCredentials(`${apiBaseUrl}/analytics/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visitorId, type: 'page_view', path: pathname, source }) }).catch(() => {});
+    fetchWithCredentials(`${apiBaseUrl}/analytics/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visitorId, visitId, type: 'page_view', path: pathname, source }) }).catch(() => {});
   }, [pathname, loading]);
   useEffect(() => {
     const recordSession = () => {
@@ -112,11 +123,21 @@ function AnalyticsTracker() {
         return;
       }
       if (document.visibilityState === 'hidden' && !navigator.sendBeacon) return;
-      const visitorId = sessionStorage.getItem(visitorKey);
+      const visitorId = localStorage.getItem(visitorKey) || sessionStorage.getItem(visitorKey);
       const durationSeconds = Math.round((Date.now() - lastReportedAt.current) / 1000);
       if (!visitorId || durationSeconds < 1) return;
+      const now = Date.now();
+      const lastActivity = Number(localStorage.getItem(visitActivityKey)) || 0;
+      let visitId = localStorage.getItem(visitKey) || sessionStorage.getItem(visitKey);
+      const isVisible = document.visibilityState !== 'hidden';
+      if (!visitId || !lastActivity || (isVisible && now - lastActivity > 30 * 60 * 1000)) visitId = crypto.randomUUID();
+      if (isVisible) {
+        localStorage.setItem(visitKey, visitId);
+        localStorage.setItem(visitActivityKey, String(now));
+        sessionStorage.setItem(visitKey, visitId);
+      }
       lastReportedAt.current = Date.now();
-      fetchWithCredentials(`${apiBaseUrl}/analytics/events`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visitorId, type: 'session', path: window.location.pathname, durationSeconds }) }).catch(() => {});
+      fetchWithCredentials(`${apiBaseUrl}/analytics/events`, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ visitorId, visitId, type: 'session', path: window.location.pathname, durationSeconds }) }).catch(() => {});
     };
     const interval = window.setInterval(() => { if (document.visibilityState === 'visible') recordSession(); }, 30_000);
     window.addEventListener('pagehide', recordSession);

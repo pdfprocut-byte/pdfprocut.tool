@@ -8,7 +8,7 @@ export default function PrivacyPolicyPage() {
       <header className="content-page-header">
         <span className="pdfpro-info-eyebrow">PDF PRO CUT POLICIES</span>
         <h1>Privacy Policy</h1>
-        <p>Last updated: November 26, 2026</p>
+        <p>Last updated: November 28, 2026</p>
         <p>This policy explains how PDF Pro Cut handles information when you use its document tools, create an account, contact support, or save work in your browser. The service is developed by Arun S.L. in Kerala, India.</p>
       </header>
 
@@ -31,8 +31,8 @@ export default function PrivacyPolicyPage() {
       </section>
 
       <section><h2>Analytics and cookies</h2>
-        <p>PDF Pro Cut uses first-party analytics to understand site use. It records page paths, a temporary browser-session visitor identifier, the referring website or campaign source, and time spent in the app. Successful document operations also record the tool, request path, duration, and an approximate country code when the hosting proxy provides one. Analytics is stored in the service database and may be associated with your account when you are signed in. The app's analytics records do not contain document contents.</p>
-        <p>The session and CSRF cookies support sign-in and account security. The app's analytics identifier is stored in session storage, not in a persistent analytics cookie. The administrator can save advertising placement settings, but this version of the app does not load an advertising script.</p>
+        <p>PDF Pro Cut uses first-party analytics to understand site use. It records page paths, a random browser identifier stored in local storage to recognize return visits, a visit identifier also stored in local storage and renewed after 30 minutes of inactivity, the referring website or campaign source, and time spent in the app. Successful document operations also record the tool, request path, duration, and an approximate country code when the hosting proxy provides one. Analytics is stored in the service database and may be associated with your account when you are signed in. The app's analytics records do not contain document contents.</p>
+        <p>The session and CSRF cookies support sign-in and account security. The analytics identifier remains in local storage between visits so the same browser is counted once per local day; clearing this site's browser data creates a new identifier. The administrator can save advertising placement settings, but this version of the app does not load an advertising script.</p>
       </section>
 
       <section><h2>Messages and service providers</h2>
